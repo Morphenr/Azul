@@ -1,19 +1,5 @@
 import yaml
 
-def is_game_over(game_state):
-    """
-    Check if the game ends. The game ends when a player completes a row on their wall.
-    """
-    for board in game_state.player_boards:
-        for row in board["wall"]:
-            if all(tile is not None for tile in row):  # Row is complete
-                print("Game is complete!")
-                print(f"Final Games state: {game_state.__str__}")
-                return True
-    return game_state.round_number > 100  # Safety net if rounds exceed 100
-
-
-
 def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx):
     """
     Simulate a player's action. Remove the chosen tile from the factory or center pool
@@ -164,47 +150,27 @@ def load_game_settings(settings_path="game/game_settings.yaml"):
 
 import math
 
-def evaluate_board_state(game_state, player_idx):
+def calculate_positive_attributes(game_state, player_idx):
     """
-    Provide a holistic evaluation of the player's board state.
-    Takes into account wall density, pattern line progress, opponent progress, 
-    future scoring potential, and end-of-game bonuses.
+    Calculate the positive attributes of a board: pattern line progress, future potential, and end-of-game bonuses.
     """
     player_board = game_state.player_boards[player_idx]
     wall = player_board["wall"]
     pattern_lines = player_board["pattern_lines"]
-    floor_line = player_board["floor_line"]
-
-    # Base score factors
+    
     score = 0
-
-    # Wall density: Penalize even distribution of tiles and reward clusters
-    clustering_penalty = calculate_wall_clustering_penalty(wall)
-    score -= clustering_penalty
 
     # Pattern line progress: Reward pattern lines close to completion
     pattern_progress = sum((len(line) / (idx + 1)) for idx, line in enumerate(pattern_lines))
     score += pattern_progress * 2  # Weighted factor
-
-    # Floor penalties: Penalize tiles in the floor line
-    score -= calculate_floor_penalty(floor_line)
 
     # Future potential: Reward rows/columns with fewer empty spaces
     for row_idx, row in enumerate(wall):
         empty_spaces = row.count(None)
         score += (5 - empty_spaces) ** 2  # Reward completed rows more heavily
 
-    # Opponent progress comparison
-    opponent_sparsity = [
-        calculate_wall_clustering_penalty(opp_board["wall"])
-        for opp_idx, opp_board in enumerate(game_state.player_boards)
-        if opp_idx != player_idx
-    ]
-    avg_opponent_sparsity = sum(opponent_sparsity) / len(opponent_sparsity)
-    score += (avg_opponent_sparsity - clustering_penalty) * 1.5  # Adjust weight as needed
-
-    # End-of-game bonuses
-    if is_game_over(game_state):
+    # End-of-game bonuses (only if game is over)
+    if game_state.is_game_over():
         # Horizontal line bonus: 2 points per complete row
         for row in wall:
             if all(tile is not None for tile in row):
@@ -223,8 +189,54 @@ def evaluate_board_state(game_state, player_idx):
                     color_counts[tile] = color_counts.get(tile, 0) + 1
         score += sum(10 for count in color_counts.values() if count == 5)
 
-    # Return the holistic score
     return score
+
+def calculate_negative_attributes(game_state, player_idx):
+    """
+    Calculate the negative attributes of a board: clustering penalty and floor penalties.
+    """
+    player_board = game_state.player_boards[player_idx]
+    wall = player_board["wall"]
+    floor_line = player_board["floor_line"]
+    
+    score = 0
+
+    # Wall density: Penalize even distribution of tiles and reward clusters
+    clustering_penalty = calculate_wall_clustering_penalty(wall)
+    score -= clustering_penalty
+
+    # Floor penalties: Penalize tiles in the floor line
+    score -= calculate_floor_penalty(floor_line)
+
+    return score
+
+def evaluate_board_state(game_state, player_idx):
+    """
+    Provide a holistic evaluation of the player's board state compared to opponents.
+    Positive attributes are added, and negative attributes are subtracted for the player.
+    The same evaluation is performed for the opponent(s), and the player's score is 
+    adjusted by subtracting the opponent's evaluation.
+    """
+    # Evaluate positive and negative attributes for the player
+    player_positive = calculate_positive_attributes(game_state, player_idx)
+    player_negative = calculate_negative_attributes(game_state, player_idx)
+    player_score = player_positive + player_negative  # Total score for the player
+
+    # Opponent evaluation
+    opponent_scores = []
+    for opp_idx, opp_board in enumerate(game_state.player_boards):
+        if opp_idx != player_idx:
+            # Evaluate positive and negative attributes for each opponent
+            opponent_positive = calculate_positive_attributes(game_state, opp_idx)
+            opponent_negative = calculate_negative_attributes(game_state, opp_idx)
+            opponent_score = opponent_positive + opponent_negative
+            opponent_scores.append(opponent_score)
+
+    # Subtract the sum of opponent scores from the player's score (zero-sum game)
+    score = player_score - (1/len(game_state.player_boards)) * sum(opponent_scores)
+
+    return score
+
 
 def calculate_wall_clustering_penalty(wall):
     """
@@ -271,3 +283,26 @@ def calculate_floor_penalty(floor_line):
             total_penalty += penalties[-1]  # Apply max penalty for additional tiles
 
     return total_penalty
+
+def apply_end_game_bonuses(self, player_board, wall):
+    """
+    Apply end-of-game bonuses for completed horizontal and vertical lines
+    and full color sets.
+    """
+    print("Applying end-of-game bonuses...")
+
+    # Horizontal Line Bonus: Check for complete horizontal lines
+    for row in wall:
+        if None not in row:  # If there are no None values in the row, it's complete
+            player_board["score"] += 2  # 2 points for each complete horizontal line
+
+    # Vertical Line Bonus: Check for complete vertical lines
+    for col_idx in range(5):  # There are 5 columns in the wall
+        if all(wall[row_idx][col_idx] is not None for row_idx in range(5)):  # If column is complete
+            player_board["score"] += 7  # 7 points for each complete vertical line
+
+    # Full Color Set Bonus: Check if a color is completed across the entire wall
+    for color in ['red', 'blue', 'yellow', 'black', 'white']:  # List of colors
+        color_count = sum(1 for row in wall for tile in row if tile == color)
+        if color_count == 5:  # All 5 tiles of this color are placed
+            player_board["score"] += 10  # 10 points for completing a color

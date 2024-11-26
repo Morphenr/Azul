@@ -132,6 +132,7 @@ class GameState:
             board["pattern_lines"] = [[] for _ in range(self.pattern_line_size)]
             board["wall"] = [[None] * 5 for _ in range(5)]  # Reset to default empty wall
             board["floor_line"] = []
+            board["score"] = 0
         self.refill_factories()
         print("Game state reset complete.")
 
@@ -179,9 +180,35 @@ class GameState:
             self.discard_pile.extend(floor_line)
             floor_line.clear()
 
+        if self.is_game_over():
+            self.apply_end_game_bonuses(player_board, wall)
+
         # Reset for next round
         self.round_number += 1
         self.refill_factories()
+
+    def apply_end_game_bonuses(self, player_board, wall):
+        """
+        Apply end-of-game bonuses for completed horizontal and vertical lines
+        and full color sets.
+        """
+        print("Applying end-of-game bonuses...")
+
+        # Horizontal Line Bonus: Check for complete horizontal lines
+        for row in wall:
+            if None not in row:  # If there are no None values in the row, it's complete
+                player_board["score"] += 2  # 2 points for each complete horizontal line
+
+        # Vertical Line Bonus: Check for complete vertical lines
+        for col_idx in range(5):  # There are 5 columns in the wall
+            if all(wall[row_idx][col_idx] is not None for row_idx in range(5)):  # If column is complete
+                player_board["score"] += 7  # 7 points for each complete vertical line
+
+        # Full Color Set Bonus: Check if a color is completed across the entire wall
+        for color in ['red', 'blue', 'yellow', 'black', 'white']:  # List of colors
+            color_count = sum(1 for row in wall for tile in row if tile == color)
+            if color_count == 5:  # All 5 tiles of this color are placed
+                player_board["score"] += 10  # 10 points for completing a color
 
     def find_wall_column(self, wall_row, tile_color):
         """
@@ -283,3 +310,15 @@ class GameState:
         max_centre_actions = len(self.tile_colors) * (self.pattern_line_size + 1)
 
         return max_centre_actions + max_factory_actions
+    
+    def is_game_over(self):
+        """
+        Check if the game ends. The game ends when a player completes a row on their wall.
+        """
+        for board in self.player_boards:
+            for row in board["wall"]:
+                if all(tile is not None for tile in row):  # Row is complete
+                    print("Game is complete!")
+                    print(f"Final Games state: {self.__str__}")
+                    return True
+        return self.round_number > 100  # Safety net if rounds exceed 100
