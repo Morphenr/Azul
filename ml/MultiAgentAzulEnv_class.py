@@ -33,7 +33,6 @@ class MultiAgentAzulEnv:
         # Access player_boards using dot notation
         reward = calculate_scores(self.game_state.player_boards[player_idx])  # Updated line
         is_done = is_game_over(self.game_state)
-        self.current_player = (self.current_player + 1) % self.num_players
         return self.get_state(), reward, is_done, {"player": player_idx}
 
 
@@ -48,9 +47,9 @@ class MultiAgentAzulEnv:
             if not valid_actions:
                 raise ValueError(f"No valid actions available for player {self.current_player}.")
 
-            action = agent.select_action(state, valid_actions)
-            next_state, reward, _, _ = self.step(action)
-            agent.update(state, action, reward, next_state, False)
+            action_index = agent.select_action_index(state, valid_actions)
+            next_state, reward, _, _ = self.step(valid_actions[action_index])
+            agent.update(state, action_index, reward, next_state, False)
             state = next_state
             turn_count += 1
             self.current_player = (self.current_player + 1) % self.num_players

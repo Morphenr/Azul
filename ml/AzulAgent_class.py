@@ -16,26 +16,37 @@ class AzulAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
 
-    def select_action(self, state, valid_actions):
+    def select_action_index(self, state, valid_actions):
         """
         Select an action from the valid actions using an epsilon-greedy policy.
         """
+
+        # Filter out invalid actions (padded actions)
+        valid_action_indeces = [idx for idx, action in enumerate(valid_actions) if action != None]
+
+        if not valid_action_indeces:
+            raise ValueError("No valid actaions available to select from")
+        
         if random.random() < self.epsilon:
-            return random.choice(valid_actions)  # Explore by selecting a random valid action
+            selected_index = random.choice(valid_action_indeces)  # Explore by selecting a random valid action
         else:
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0)
                 q_values = self.q_network(state_tensor).detach().numpy()
                 # Filter Q-values to only valid actions
-                valid_q_values = [(q_values[0, action_idx], action_idx) for action_idx in valid_actions]
-                return max(valid_q_values, key=lambda x: x[0])[1]
+                valid_q_values = [(q_values[0, action_idx], action_idx) for action_idx in valid_action_indeces]
+                selected_index = max(valid_q_values, key=lambda x: x[0])[1]
 
-    def update(self, state, action, reward, next_state, done):
+        return selected_index
+
+    def update(self, state, action_index, reward, next_state, done):
         """
         Update the Q-network using the Bellman equation.
         """
-        print(f"State: {state}")
-        
+
+        if isinstance(action_index, tuple):
+            raise ValueError(f"Expected action as an integer index, but got tuple: {action_index}")
+
         state = torch.FloatTensor(state).unsqueeze(0)
         next_state = torch.FloatTensor(next_state).unsqueeze(0)
         reward = torch.FloatTensor([reward])
@@ -47,7 +58,7 @@ class AzulAgent:
             target_q = reward + self.gamma * max_next_q * (1 - done)
 
         # Compute current Q-value
-        current_q = self.q_network(state)[0, action]
+        current_q = self.q_network(state)[0, action_index]
 
         # Update Q-network
         loss = self.criterion(current_q, target_q)

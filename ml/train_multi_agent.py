@@ -49,7 +49,5 @@ def train_multi_agent(episodes=1000):
         game_state = env.play_game()
         print(f"Episode {episode + 1} complete. Game over. Collecting results...")
 
-        # Optionally: print more details about the game state after each episode, like scores or winner
-        # print(f"Game Result: {game_state}")  # Uncomment this line if you want to see detailed results
 
     print(f"\nTraining complete. {episodes} episodes finished.")

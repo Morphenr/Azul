@@ -35,17 +35,48 @@ class GameState:
             {
                 "pattern_lines": [[] for _ in range(self.pattern_line_size)],
                 "wall": [row[:] for row in self.wall_pattern],
-                "floor_line": []
+                "floor_line": [],
+                "score": 0
             }
             for _ in range(self.num_players)
         ]
         
+        self.max_board_size = self.calculate_max_board_size()
+        self.max_actions = self.calculate_max_actions()
+
         self.round_number = 1
         self.bag = self.initialize_bag()
         self.discard_pile = []
 
         print("GameState initialization complete.")
     
+    def __str__(self):
+        """
+        Converts the game state to a human-readable string format.
+        """
+        game_state_str = f"Round {self.round_number}\n"
+        game_state_str += f"Tile Colors: {self.tile_colors}\n"
+        game_state_str += f"Factories: \n"
+        
+        # Format the factories
+        for idx, factory in enumerate(self.factories):
+            game_state_str += f"  Factory {idx + 1}: {factory}\n"
+
+        game_state_str += f"Center Pool: {self.center_pool}\n"
+        
+        # Format the player boards
+        for player_idx, board in enumerate(self.player_boards):
+            game_state_str += f"Player {player_idx + 1} Board:\n"
+            game_state_str += f"  Pattern Lines: {board['pattern_lines']}\n"
+            game_state_str += f"  Wall: \n"
+            for row in board['wall']:
+                game_state_str += f"    {row}\n"
+            game_state_str += f"  Floor Line: {board['floor_line']}\n"
+            game_state_str += f"  Score: {board['score']}\n"
+
+        return game_state_str
+
+
     def initialize_bag(self):
         """
         Initialize the tile bag based on the colors defined in the game settings.
@@ -55,6 +86,7 @@ class GameState:
         tile_bag = []
         for color in self.tile_colors:
             tile_bag.extend([color] * 20)  # Add 20 tiles of each color to the bag
+        random.shuffle(tile_bag)
         print(f"Tile bag initialized with {len(tile_bag)} tiles.")
         return tile_bag
 
@@ -65,13 +97,16 @@ class GameState:
         tiles = []
         for _ in range(count):
             if not self.bag:
+                if not self.discard_pile:
+                    raise ValueError("Both bag and discad pile are empty, cannot draw tiles.")
                 # Refill the bag from the discard pile if it's empty
                 print("Refilling the tile bag from the discard pile...")
-                self.bag = self.discard_pile
+                self.bag = self.discard_pile[:]
                 self.discard_pile = []
                 random.shuffle(self.bag)
             if self.bag:
                 tiles.append(self.bag.pop())
+        print(f"Tiles drawn: {tiles}")
         return tiles
 
     def refill_factories(self):
@@ -175,3 +210,26 @@ class GameState:
         for i, tile in enumerate(floor_line):
             penalty += penalties[i] if i < len(penalties) else -3
         return penalty
+
+    def calculate_max_board_size(self):
+        """
+        Estimate the maximum size of the encoded board state
+        """
+        max_factory_tiles = self.num_factories * 4
+
+        max_center_pool_tles = max_factory_tiles
+
+        max_pattern_line_tiles = self.pattern_line_size * self.num_players
+        max_wall_tiles = len(self.wall_pattern) * len(self.wall_pattern[0]) * self.num_players
+        max_floor_line_tiles = 7 * self.num_players
+
+        return max_factory_tiles + max_center_pool_tles + max_pattern_line_tiles + max_wall_tiles + max_floor_line_tiles
+    
+    def calculate_max_actions(self):
+        """
+        Estimate the maximum number of valid actions
+        """
+        max_factory_actions = self.num_factories * len(self.tile_colors) * (self.pattern_line_size + 1)
+        max_centre_actions = len(self.tile_colors) * (self.pattern_line_size + 1)
+
+        return max_centre_actions + max_factory_actions
