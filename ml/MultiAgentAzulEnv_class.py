@@ -48,9 +48,9 @@ class MultiAgentAzulEnv:
             if not valid_actions:
                 raise ValueError(f"No valid actions available for player {self.current_player}.")
 
-            action = agent.select_action(state, valid_actions)
-            next_state, reward, _, _ = self.step(action)
-            agent.update(state, action, reward, next_state, False)
+            action_index = agent.select_action_index(state, valid_actions)
+            next_state, reward, _, _ = self.step(valid_actions[action_index])
+            agent.update(state, action_index, reward, next_state, False)
             state = next_state
             turn_count += 1
             self.current_player = (self.current_player + 1) % self.num_players

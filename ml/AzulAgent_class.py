@@ -16,7 +16,7 @@ class AzulAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
 
-    def select_action(self, state, valid_actions):
+    def select_action_index(self, state, valid_actions):
         """
         Select an action from the valid actions using an epsilon-greedy policy.
         """
@@ -37,13 +37,16 @@ class AzulAgent:
                 valid_q_values = [(q_values[0, action_idx], action_idx) for action_idx in valid_action_indeces]
                 selected_index = max(valid_q_values, key=lambda x: x[0])[1]
 
-        return valid_actions[selected_index]
+        return selected_index
 
-    def update(self, state, action, reward, next_state, done):
+    def update(self, state, action_index, reward, next_state, done):
         """
         Update the Q-network using the Bellman equation.
         """
         print(f"State: {state}")
+
+        if isinstance(action_index, tuple):
+            raise ValueError(f"Expected action as an integer index, but got tuple: {action_index}")
 
         state = torch.FloatTensor(state).unsqueeze(0)
         next_state = torch.FloatTensor(next_state).unsqueeze(0)
@@ -56,7 +59,7 @@ class AzulAgent:
             target_q = reward + self.gamma * max_next_q * (1 - done)
 
         # Compute current Q-value
-        current_q = self.q_network(state)[0, action]
+        current_q = self.q_network(state)[0, action_index]
 
         # Update Q-network
         loss = self.criterion(current_q, target_q)
