@@ -3,7 +3,7 @@ from ml.AzulAgent_class import AzulAgent
 from helper_functions.helper_functions import encode_board_state, get_valid_actions, load_game_settings
 
 
-def train_multi_agent(episodes=1000):
+def train_multi_agent(episodes=10):
     # Load the game settings from the YAML configuration file
     print("Loading game settings...")
     settings = load_game_settings()
@@ -48,6 +48,6 @@ def train_multi_agent(episodes=1000):
         # Play one complete game with the agents
         game_state = env.play_game()
         print(f"Episode {episode + 1} complete. Game over. Collecting results...")
-
+        print(f"Final game state: {env.game_state.__str__()}")
 
     print(f"\nTraining complete. {episodes} episodes finished.")

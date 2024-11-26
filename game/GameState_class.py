@@ -55,7 +55,7 @@ class GameState:
         Converts the game state to a human-readable string format.
         """
         game_state_str = f"Round {self.round_number}\n"
-        game_state_str += f"Tile Colors: {self.tile_colors}\n"
+        game_state_str += f"Possible Tile Colors: {self.tile_colors}\n"
         game_state_str += f"Factories: \n"
         
         # Format the factories
@@ -73,6 +73,8 @@ class GameState:
                 game_state_str += f"    {row}\n"
             game_state_str += f"  Floor Line: {board['floor_line']}\n"
             game_state_str += f"  Score: {board['score']}\n"
+
+        game_state_str += f"Discard Pile: {self.discard_pile}\n"
 
         return game_state_str
 
@@ -157,10 +159,10 @@ class GameState:
                     tile_color = pattern_line[0]
                     wall[i][self.find_wall_column(wall[i], tile_color)] = tile_color
                     player_board["score"] += self.calculate_scoring(wall, i, tile_color)  # Custom scoring logic
-                    pattern_lines[i] = []  # Clear pattern line
 
             # Add floor line penalties
             player_board["score"] -= self.calculate_floor_penalty(floor_line)
+            self.discard_pile.extend(floor_line)
             floor_line.clear()
 
             # Discard leftover tiles
@@ -169,14 +171,24 @@ class GameState:
                 pattern_line.clear()
 
         # Reset for next round
+        self.round_number += 1
         self.refill_factories()
 
     def find_wall_column(self, wall_row, tile_color):
         """
         Find the appropriate column in the wall for the given tile color.
+        
+        wall_row: A list representing a row in the wall pattern.
+        tile_color: The color of the tile we are trying to place.
+
+        Returns: The index of the column where the tile should go in the given wall row.
         """
-        wall_colors = ["blue", "yellow", "red", "black", "white"]  # Example Azul colors
-        return wall_colors.index(tile_color)
+        # Find the index of the tile color in the row
+        if tile_color in wall_row:
+            return wall_row.index(tile_color)
+        else:
+            raise ValueError(f"Tile color {tile_color} not found in the given wall row.")
+
 
     def calculate_scoring(self, wall, row_idx, tile_color):
         """

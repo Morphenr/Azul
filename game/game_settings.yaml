@@ -7,9 +7,9 @@ tile_colors:
   - "black"
   - "white"
 wall_pattern:
-  - [None, None, None, None, None] 
-  - [None, None, None, None, None]
-  - [None, None, None, None, None]
-  - [None, None, None, None, None]
-  - [None, None, None, None, None]
+  - [blue, yellow, red, black, white] 
+  - [white, blue, yellow, red, black]
+  - [black, white, blue, yellow, red]
+  - [red, black, white, blue, yellow]
+  - [yellow, red, black, white, blue]
 pattern_line_size: 5 

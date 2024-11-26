@@ -58,5 +58,5 @@ class MultiAgentAzulEnv:
                 self.game_state.wall_tiling_phase()
 
         # Check if the game is over
-        return is_game_over(self.game_state)
+        return self.game_state.__str__()
 
