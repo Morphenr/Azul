@@ -120,14 +120,14 @@ class GameState:
         Refill the factories at the start of a new round.
         Raise an error if any factory is non-empty.
         """
-        print("Refilling factories for a new round...")
+        #print("Refilling factories for a new round...")
         
         for factory in self.factories:
             if factory:  # Check if the factory is not empty
                 raise AssertionError("Cannot refill a non-empty factory.")
             factory.extend(self.draw_tiles(4))  # Each factory gets 4 tiles
         
-        print(f"Refilled {len(self.factories)} factories.")
+        #print(f"Refilled {len(self.factories)} factories.")
 
     def reset(self):
         print("Resetting the game state...")
@@ -156,7 +156,7 @@ class GameState:
         Perform the Wall-tiling phase, including scoring, moving tiles,
         and discarding leftover tiles.
         """
-        print("Performing wall tiling phase...")
+        #print("Performing wall tiling phase...")
         for player_board in self.player_boards:
             pattern_lines = player_board["pattern_lines"]
             wall = player_board["wall"]
