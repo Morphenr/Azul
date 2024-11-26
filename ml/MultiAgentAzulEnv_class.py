@@ -2,7 +2,7 @@ from game.GameState_class import GameState
 from helper_functions.helper_functions import encode_board_state, simulate_action, calculate_scores, is_game_over, get_valid_actions
 
 class MultiAgentAzulEnv:
-    def __init__(self, num_players=2):
+    def __init__(self, num_players):
         self.num_players = num_players
         self.agents = [None] * num_players
         self.game_state = GameState(num_players)
@@ -40,7 +40,7 @@ class MultiAgentAzulEnv:
         state = self.reset()
         turn_count = 0
 
-        while not self.game_state.is_round_over() and turn_count < max_turns:
+        while not is_game_over(self.game_state) and turn_count < max_turns:
             agent = self.agents[self.current_player]
             valid_actions = get_valid_actions(self.game_state, self.current_player)
 
@@ -54,8 +54,8 @@ class MultiAgentAzulEnv:
             turn_count += 1
             self.current_player = (self.current_player + 1) % self.num_players
 
-        # Perform wall-tiling phase and reset for next round
-        self.game_state.wall_tiling_phase()
+            if self.game_state.is_round_over():
+                self.game_state.wall_tiling_phase()
 
         # Check if the game is over
         return is_game_over(self.game_state)

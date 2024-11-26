@@ -10,7 +10,7 @@ def is_game_over(game_state):
                 print("Game is complete!")
                 print(f"Final Games state: {game_state.__str__}")
                 return True
-    return game_state.round_number > 15  # Safety net if rounds exceed 15
+    return game_state.round_number > 100  # Safety net if rounds exceed 100
 
 
 

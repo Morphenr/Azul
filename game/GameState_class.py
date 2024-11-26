@@ -98,7 +98,7 @@ class GameState:
         for _ in range(count):
             if not self.bag:
                 if not self.discard_pile:
-                    raise ValueError("Both bag and discad pile are empty, cannot draw tiles.")
+                    raise ValueError(f"Both bag and discad pile are empty, cannot draw tiles. Game state: {self.__str__()}")
                 # Refill the bag from the discard pile if it's empty
                 print("Refilling the tile bag from the discard pile...")
                 self.bag = self.discard_pile[:]
@@ -106,7 +106,7 @@ class GameState:
                 random.shuffle(self.bag)
             if self.bag:
                 tiles.append(self.bag.pop())
-        print(f"Tiles drawn: {tiles}")
+        #print(f"Tiles drawn: {tiles}")
         return tiles
 
     def refill_factories(self):
@@ -137,7 +137,8 @@ class GameState:
         """
         Check if the round is over, i.e., all factories and the center pool are empty.
         """
-        return all(len(factory) == 0 for factory in self.factories) and len(self.center_pool) == 0
+        round_over_bool = (all(len(factory) == 0 for factory in self.factories) and len(self.center_pool) == 0)
+        return round_over_bool
     
     def wall_tiling_phase(self):
         """
