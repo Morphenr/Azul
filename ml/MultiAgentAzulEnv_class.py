@@ -33,7 +33,6 @@ class MultiAgentAzulEnv:
         # Access player_boards using dot notation
         reward = calculate_scores(self.game_state.player_boards[player_idx])  # Updated line
         is_done = is_game_over(self.game_state)
-        self.current_player = (self.current_player + 1) % self.num_players
         return self.get_state(), reward, is_done, {"player": player_idx}
 
 

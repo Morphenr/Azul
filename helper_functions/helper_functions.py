@@ -7,8 +7,10 @@ def is_game_over(game_state):
     for board in game_state.player_boards:
         for row in board["wall"]:
             if all(tile is not None for tile in row):  # Row is complete
+                print("Game is complete!")
+                print(f"Final Games state: {game_state.__str__}")
                 return True
-    return game_state.round_number > 10  # Safety net if rounds exceed 5
+    return game_state.round_number > 15  # Safety net if rounds exceed 15
 
 
 
@@ -68,7 +70,7 @@ def get_valid_actions(game_state, player_idx):
     actions = actions[:max_actions]
 
     # Log valid actions
-    print(f"Valid Actions for Player {player_idx}: {actions}")
+    # print(f"Valid Actions for Player {player_idx}: {actions}")
 
     return actions
 

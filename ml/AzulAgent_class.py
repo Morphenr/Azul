@@ -43,7 +43,6 @@ class AzulAgent:
         """
         Update the Q-network using the Bellman equation.
         """
-        print(f"State: {state}")
 
         if isinstance(action_index, tuple):
             raise ValueError(f"Expected action as an integer index, but got tuple: {action_index}")

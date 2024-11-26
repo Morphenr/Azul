@@ -50,6 +50,33 @@ class GameState:
 
         print("GameState initialization complete.")
     
+    def __str__(self):
+        """
+        Converts the game state to a human-readable string format.
+        """
+        game_state_str = f"Round {self.round_number}\n"
+        game_state_str += f"Tile Colors: {self.tile_colors}\n"
+        game_state_str += f"Factories: \n"
+        
+        # Format the factories
+        for idx, factory in enumerate(self.factories):
+            game_state_str += f"  Factory {idx + 1}: {factory}\n"
+
+        game_state_str += f"Center Pool: {self.center_pool}\n"
+        
+        # Format the player boards
+        for player_idx, board in enumerate(self.player_boards):
+            game_state_str += f"Player {player_idx + 1} Board:\n"
+            game_state_str += f"  Pattern Lines: {board['pattern_lines']}\n"
+            game_state_str += f"  Wall: \n"
+            for row in board['wall']:
+                game_state_str += f"    {row}\n"
+            game_state_str += f"  Floor Line: {board['floor_line']}\n"
+            game_state_str += f"  Score: {board['score']}\n"
+
+        return game_state_str
+
+
     def initialize_bag(self):
         """
         Initialize the tile bag based on the colors defined in the game settings.
