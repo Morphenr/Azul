@@ -1,3 +1,5 @@
 torch==1.13.1
 numpy==1.23.5
 pyyaml
+plotly
+mlflow==2.14
