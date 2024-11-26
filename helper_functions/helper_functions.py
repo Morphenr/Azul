@@ -135,38 +135,64 @@ def get_valid_actions(game_state, player_idx):
 def encode_board_state(game_state):
     """
     Encode the game state into a format suitable for ML models.
-    Returns a flattened numerical representation.
+    Returns a flattened numerical representation with consistent feature positions.
     """
     max_board_size = game_state.max_board_size
     features = []
     
     # Use the TileColorMapping object from the game state
     tile_color_mapping = game_state.tile_color_mapping
-    
+
+    # Constants for fixed lengths (you can modify these based on your specific game design)
+    NUM_FACTORIES = len(game_state.factories)  # Number of factories
+    FACTORY_SIZE = max(len(factory) for factory in game_state.factories)  # Max number of tiles in any factory
+    MAX_PATTERN_LINE_SIZE = max(len(line) for player_board in game_state.player_boards for line in player_board["pattern_lines"])
+    MAX_WALL_SIZE = len(game_state.player_boards[0]["wall"])  # Assuming all players have the same wall size
+    MAX_FLOOR_SIZE = max(len(board["floor_line"]) for board in game_state.player_boards)
+
+    # Define a fixed size for the center pool (you can adjust this value as needed)
+    CENTER_POOL_SIZE = NUM_FACTORIES *  3 + 1 # At most three tiles from each factory get placed, plus one for the first starter
+
     # Encode factories
     for factory in game_state.factories:
-        features.extend([tile_color_mapping.get(tile) for tile in factory])  # Map tile colors to integers
+        # Each factory's tiles should be padded/truncated to FACTORY_SIZE
+        factory_encoding = [tile_color_mapping.get(tile, 0) for tile in factory]
+        factory_encoding.extend([0] * (FACTORY_SIZE - len(factory)))  # Padding to fixed size
+        features.extend(factory_encoding)
 
-    # Encode center pool
-    features.extend([tile_color_mapping.get(tile) for tile in game_state.center_pool])  # Map tile colors to integers
+    # Encode center pool (fixed size CENTER_POOL_SIZE)
+    center_pool_encoding = [tile_color_mapping.get(tile, 0) for tile in game_state.center_pool]
+    center_pool_encoding = center_pool_encoding[:CENTER_POOL_SIZE]  # Truncate to fixed size
+    center_pool_encoding.extend([0] * (CENTER_POOL_SIZE - len(center_pool_encoding)))  # Padding to fixed size
+    features.extend(center_pool_encoding)
 
-    # Encode player boards
+    # Encode player boards (Pattern lines, Wall, Floor line)
     for board in game_state.player_boards:
-        # Pattern lines
+        # Pattern lines (max length MAX_PATTERN_LINE_SIZE)
         for line in board["pattern_lines"]:
-            features.extend([tile_color_mapping.get(tile) for tile in line])  # Map tile colors to integers
-        # Wall rows
+            pattern_line_encoding = [tile_color_mapping.get(tile, 0) for tile in line]
+            pattern_line_encoding.extend([0] * (MAX_PATTERN_LINE_SIZE - len(line)))  # Padding
+            features.extend(pattern_line_encoding)
+        
+        # Wall rows (max length MAX_WALL_SIZE)
         for wall_row in board["wall"]:
-            features.extend([tile_color_mapping.get(tile) for tile in wall_row])  # Map tile colors to integers
-        # Floor line
-        features.extend([tile_color_mapping.get(tile) for tile in board["floor_line"]])  # Map tile colors to integers
+            wall_row_encoding = [tile_color_mapping.get(tile, 0) for tile in wall_row]
+            wall_row_encoding.extend([0] * (MAX_WALL_SIZE - len(wall_row)))  # Padding
+            features.extend(wall_row_encoding)
 
+        # Floor line (max length MAX_FLOOR_SIZE)
+        floor_line_encoding = [tile_color_mapping.get(tile, 0) for tile in board["floor_line"]]
+        floor_line_encoding.extend([0] * (MAX_FLOOR_SIZE - len(board["floor_line"])))  # Padding
+        features.extend(floor_line_encoding)
+
+    # Padding or truncating to max_board_size
     while len(features) < max_board_size:
-        features.append(0) # Use 0 or another placeholder for padding
+        features.append(0)  # Use 0 or another placeholder for padding
+    features = features[:max_board_size]  # Truncate if necessary
 
-    # Truncate to max_board_size if necessary
-    features = features[:max_board_size]
     return features
+
+
 
 def load_game_settings(settings_path="game/game_settings.yaml"):
     with open(settings_path, 'r') as file:
