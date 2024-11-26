@@ -40,6 +40,9 @@ class GameState:
             for _ in range(self.num_players)
         ]
         
+        self.max_board_size = self.calculate_max_board_size()
+        self.max_actions = self.calculate_max_actions()
+
         self.round_number = 1
         self.bag = self.initialize_bag()
         self.discard_pile = []
@@ -55,6 +58,7 @@ class GameState:
         tile_bag = []
         for color in self.tile_colors:
             tile_bag.extend([color] * 20)  # Add 20 tiles of each color to the bag
+        random.shuffle(tile_bag)
         print(f"Tile bag initialized with {len(tile_bag)} tiles.")
         return tile_bag
 
@@ -65,13 +69,16 @@ class GameState:
         tiles = []
         for _ in range(count):
             if not self.bag:
+                if not self.discard_pile:
+                    raise ValueError("Both bag and discad pile are empty, cannot draw tiles.")
                 # Refill the bag from the discard pile if it's empty
                 print("Refilling the tile bag from the discard pile...")
-                self.bag = self.discard_pile
+                self.bag = self.discard_pile[:]
                 self.discard_pile = []
                 random.shuffle(self.bag)
             if self.bag:
                 tiles.append(self.bag.pop())
+        print(f"Tiles drawn: {tiles}")
         return tiles
 
     def refill_factories(self):
@@ -175,3 +182,26 @@ class GameState:
         for i, tile in enumerate(floor_line):
             penalty += penalties[i] if i < len(penalties) else -3
         return penalty
+
+    def calculate_max_board_size(self):
+        """
+        Estimate the maximum size of the encoded board state
+        """
+        max_factory_tiles = self.num_factories * 4
+
+        max_center_pool_tles = max_factory_tiles
+
+        max_pattern_line_tiles = self.pattern_line_size * self.num_players
+        max_wall_tiles = len(self.wall_pattern) * len(self.wall_pattern[0]) * self.num_players
+        max_floor_line_tiles = 7 * self.num_players
+
+        return max_factory_tiles + max_center_pool_tles + max_pattern_line_tiles + max_wall_tiles + max_floor_line_tiles
+    
+    def calculate_max_actions(self):
+        """
+        Estimate the maximum number of valid actions
+        """
+        max_factory_actions = self.num_factories * len(self.tile_colors) * (self.pattern_line_size + 1)
+        max_centre_actions = len(self.tile_colors) * (self.pattern_line_size + 1)
+
+        return max_centre_actions + max_factory_actions

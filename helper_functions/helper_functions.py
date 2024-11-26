@@ -30,16 +30,12 @@ def get_valid_actions(game_state, player_idx):
     """
     Get all valid actions for the current board state and player.
     """
+    max_actions = game_state.max_actions
     actions = []
     factories = game_state.factories
     center_pool = game_state.center_pool
     player_board = game_state.player_boards[player_idx]
     pattern_lines = player_board["pattern_lines"]
-
-    # Log game state for debugging
-    print(f"Factories: {factories}")
-    print(f"Center Pool: {center_pool}")
-    print(f"Player {player_idx} Pattern Lines: {pattern_lines}")
 
     # Add actions for each factory
     for factory_idx, factory in enumerate(factories):
@@ -65,6 +61,12 @@ def get_valid_actions(game_state, player_idx):
         # Add action to place tile on the floor line
         actions.append(("center", tile, "floor"))
 
+    while len(actions) < max_actions:
+        actions.append(None) #Use None or another placeholder for invalid actions
+
+    #Truncate to amx_actions if necessary
+    actions = actions[:max_actions]
+
     # Log valid actions
     print(f"Valid Actions for Player {player_idx}: {actions}")
 
@@ -77,6 +79,7 @@ def encode_board_state(game_state):
     Encode the game state into a format suitable for ML models.
     Returns a flattened numerical representation.
     """
+    max_board_size = game_state.max_board_size
     features = []
     
     # Use the TileColorMapping object from the game state
@@ -100,6 +103,11 @@ def encode_board_state(game_state):
         # Floor line
         features.extend([tile_color_mapping.get(tile) for tile in board["floor_line"]])  # Map tile colors to integers
 
+    while len(features) < max_board_size:
+        features.append(0) # Use 0 or another placeholder for padding
+
+    # Truncate to max_board_size if necessary
+    features = features[:max_board_size]
     return features
 
 
