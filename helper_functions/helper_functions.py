@@ -1,4 +1,5 @@
 import yaml
+import math
 
 def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx):
     """
@@ -172,8 +173,6 @@ def load_game_settings(settings_path="game/game_settings.yaml"):
         settings = yaml.safe_load(file)
     return settings
 
-import math
-
 def calculate_positive_attributes(game_state, player_idx):
     """
     Calculate the positive attributes of a board: pattern line progress, future potential, and end-of-game bonuses.
@@ -230,7 +229,7 @@ def calculate_negative_attributes(game_state, player_idx):
     score -= clustering_penalty
 
     # Floor penalties: Penalize tiles in the floor line
-    score -= calculate_floor_penalty(floor_line)
+    score += calculate_floor_penalty(floor_line)
 
     return score
 
@@ -257,7 +256,7 @@ def evaluate_board_state(game_state, player_idx):
             opponent_scores.append(opponent_score)
 
     # Subtract the sum of opponent scores from the player's score (zero-sum game)
-    score = player_score - (1/len(game_state.player_boards)) * sum(opponent_scores)
+    score = player_score - 0.5*(1/len(game_state.player_boards)) * sum(opponent_scores)
 
     return score
 
@@ -307,26 +306,3 @@ def calculate_floor_penalty(floor_line):
             total_penalty += penalties[-1]  # Apply max penalty for additional tiles
 
     return total_penalty
-
-def apply_end_game_bonuses(self, player_board, wall):
-    """
-    Apply end-of-game bonuses for completed horizontal and vertical lines
-    and full color sets.
-    """
-    print("Applying end-of-game bonuses...")
-
-    # Horizontal Line Bonus: Check for complete horizontal lines
-    for row in wall:
-        if None not in row:  # If there are no None values in the row, it's complete
-            player_board["score"] += 2  # 2 points for each complete horizontal line
-
-    # Vertical Line Bonus: Check for complete vertical lines
-    for col_idx in range(5):  # There are 5 columns in the wall
-        if all(wall[row_idx][col_idx] is not None for row_idx in range(5)):  # If column is complete
-            player_board["score"] += 7  # 7 points for each complete vertical line
-
-    # Full Color Set Bonus: Check if a color is completed across the entire wall
-    for color in ['red', 'blue', 'yellow', 'black', 'white']:  # List of colors
-        color_count = sum(1 for row in wall for tile in row if tile == color)
-        if color_count == 5:  # All 5 tiles of this color are placed
-            player_board["score"] += 10  # 10 points for completing a color

@@ -179,12 +179,13 @@ class GameState:
                     # Place the tile in the correct position on the wall
                     wall[i][column] = tile_color
                     player_board["score"] += self.calculate_scoring(wall, i, tile_color)  # Custom scoring logic
-    
+                    
+
                     self.discard_pile.extend(pattern_line[:-1])  # Leave out the last tile
                     pattern_line.clear()
 
             # Add floor line penalties
-            player_board["score"] -= self.calculate_floor_penalty(floor_line)
+            player_board["score"] += self.calculate_floor_penalty(floor_line)
             self.discard_pile.extend(floor_line)
             floor_line.clear()
 
@@ -256,12 +257,12 @@ class GameState:
         right = col_idx + 1
         
         # Check left side for horizontally adjacent tiles
-        while left >= 0 and wall[row_idx][left] is not None:
+        while len(wall[row_idx]) > left >= 0 and wall[row_idx][left] is not None:
             horizontal_score += 1
             left -= 1
             
         # Check right side for horizontally adjacent tiles
-        while right < len(wall[row_idx]) and wall[row_idx][right] is not None:
+        while 0 <= right < len(wall[row_idx]) and wall[row_idx][right] is not None:
             horizontal_score += 1
             right += 1
         
@@ -271,12 +272,12 @@ class GameState:
         down = row_idx + 1
         
         # Check above for vertically adjacent tiles
-        while up >= 0 and wall[up][col_idx] is not None:
+        while len(wall) > up >= 0 and wall[up][col_idx] is not None:
             vertical_score += 1
             up -= 1
             
         # Check below for vertically adjacent tiles
-        while down < len(wall) and wall[down][col_idx] is not None:
+        while 0<= down < len(wall) and wall[down][col_idx] is not None:
             vertical_score += 1
             down += 1
         

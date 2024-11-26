@@ -3,7 +3,7 @@ from ml.AzulAgent_class import AzulAgent
 from helper_functions.helper_functions import encode_board_state, load_game_settings
 
 
-def train_multi_agent(episodes=100):
+def train_multi_agent(episodes=5000):
     # Load the game settings from the YAML configuration file
     print("Loading game settings...")
     settings = load_game_settings()
