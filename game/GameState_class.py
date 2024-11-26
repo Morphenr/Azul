@@ -25,8 +25,7 @@ class GameState:
             raise ValueError("Number of players must be greater than zero.")
         
         # Define pattern line size and wall pattern based on the settings (ensure defaults are set)
-        self.pattern_line_size = self.settings.get("pattern_line_size", 5)
-        self.wall_pattern = self.settings.get("wall_pattern", [[None] * 5 for _ in range(5)])
+        self.pattern_line_size = self.settings.get("pattern_line_size")
 
         # Initialize factories, center pool, and player boards
         self.factories = [[] for _ in range(self.num_factories)]
@@ -34,9 +33,10 @@ class GameState:
         self.player_boards = [
             {
                 "pattern_lines": [[] for _ in range(self.pattern_line_size)],
-                "wall": [row[:] for row in self.wall_pattern],
+                "wall": [row[:] for row in self.settings.get("wall_pattern")],
                 "floor_line": [],
-                "score": 0
+                "score": 0,
+                "wall_pattern": self.settings.get("wall_pattern")
             }
             for _ in range(self.num_players)
         ]
@@ -152,23 +152,32 @@ class GameState:
             pattern_lines = player_board["pattern_lines"]
             wall = player_board["wall"]
             floor_line = player_board["floor_line"]
+            wall_pattern = player_board["wall_pattern"]
 
             # Score and move tiles for each pattern line
             for i, pattern_line in enumerate(pattern_lines):
                 if len(pattern_line) == i + 1:  # Pattern line is full
                     tile_color = pattern_line[0]
-                    wall[i][self.find_wall_column(wall[i], tile_color)] = tile_color
+
+                    # Find where to place the tile in the wall
+                    row_pattern = wall_pattern[i]  # Get the pattern for the current row
+                    column = self.find_wall_column(row_pattern, tile_color)
+                    
+                    # Check if the wall already has a tile in the column
+                    if wall[i][column] is not None:
+                        raise ValueError(f"Cannot place {tile_color} in row {i}: spot already occupied.")
+
+                    # Place the tile in the correct position on the wall
+                    wall[i][column] = tile_color
                     player_board["score"] += self.calculate_scoring(wall, i, tile_color)  # Custom scoring logic
+    
+                    self.discard_pile.extend(pattern_line[:-1])  # Leave out the last tile
+                    pattern_line.clear()
 
             # Add floor line penalties
             player_board["score"] -= self.calculate_floor_penalty(floor_line)
             self.discard_pile.extend(floor_line)
             floor_line.clear()
-
-            # Discard leftover tiles
-            for pattern_line in pattern_lines:
-                self.discard_pile.extend(pattern_line)
-                pattern_line.clear()
 
         # Reset for next round
         self.round_number += 1
@@ -192,27 +201,55 @@ class GameState:
 
     def calculate_scoring(self, wall, row_idx, tile_color):
         """
-        Calculate the score for a tile placed on the wall.
+        Calculate the score for a tile placed on the wall based on adjacency rules.
+        
+        wall: A list of lists representing the wall of tiles.
+        row_idx: The index of the row where the tile is being placed.
+        tile_color: The color of the tile being placed.
+        
+        Returns: The net amount of points gained by placing the tile.
         """
-        score = 1
-        # Horizontal scoring
-        left = right = row_idx
-        while left > 0 and wall[row_idx][left - 1] is not None:
-            score += 1
+        # Initialize score
+        score = 0
+        
+        # Find the column index where the tile is being placed
+        col_idx = self.find_wall_column(wall[row_idx], tile_color)
+        
+        # Horizontal scoring (left and right adjacency)
+        horizontal_score = 1  # The newly placed tile counts as 1 point
+        left = col_idx - 1
+        right = col_idx + 1
+        
+        # Check left side for horizontally adjacent tiles
+        while left >= 0 and wall[row_idx][left] is not None:
+            horizontal_score += 1
             left -= 1
-        while right < len(wall[row_idx]) - 1 and wall[row_idx][right + 1] is not None:
-            score += 1
+            
+        # Check right side for horizontally adjacent tiles
+        while right < len(wall[row_idx]) and wall[row_idx][right] is not None:
+            horizontal_score += 1
             right += 1
-        # Vertical scoring
-        col = self.find_wall_column(wall[row_idx], tile_color)
-        up = down = row_idx
-        while up > 0 and wall[up - 1][col] is not None:
-            score += 1
+        
+        # Vertical scoring (up and down adjacency)
+        vertical_score = 1  # The newly placed tile counts as 1 point
+        up = row_idx - 1
+        down = row_idx + 1
+        
+        # Check above for vertically adjacent tiles
+        while up >= 0 and wall[up][col_idx] is not None:
+            vertical_score += 1
             up -= 1
-        while down < len(wall) - 1 and wall[down + 1][col] is not None:
-            score += 1
+            
+        # Check below for vertically adjacent tiles
+        while down < len(wall) and wall[down][col_idx] is not None:
+            vertical_score += 1
             down += 1
+        
+        # Total score is the sum of the horizontal and vertical scores
+        score = horizontal_score + vertical_score - 1  # Subtract 1 to avoid double-counting the placed tile
+        
         return score
+
 
     def calculate_floor_penalty(self, floor_line):
         """
@@ -233,7 +270,7 @@ class GameState:
         max_center_pool_tles = max_factory_tiles
 
         max_pattern_line_tiles = self.pattern_line_size * self.num_players
-        max_wall_tiles = len(self.wall_pattern) * len(self.wall_pattern[0]) * self.num_players
+        max_wall_tiles = len(self.player_boards[0]["wall_pattern"]) * len(self.player_boards[0]["wall_pattern"][0]) * self.num_players
         max_floor_line_tiles = 7 * self.num_players
 
         return max_factory_tiles + max_center_pool_tles + max_pattern_line_tiles + max_wall_tiles + max_floor_line_tiles

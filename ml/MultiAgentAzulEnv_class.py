@@ -1,5 +1,5 @@
 from game.GameState_class import GameState
-from helper_functions.helper_functions import encode_board_state, simulate_action, calculate_scores, is_game_over, get_valid_actions
+from helper_functions.helper_functions import encode_board_state, simulate_action, evaluate_board_state, is_game_over, get_valid_actions
 
 class MultiAgentAzulEnv:
     def __init__(self, num_players):
@@ -31,7 +31,7 @@ class MultiAgentAzulEnv:
             return self.get_state(), -10, False, {"player": player_idx}
 
         # Access player_boards using dot notation
-        reward = calculate_scores(self.game_state.player_boards[player_idx])  # Updated line
+        reward = evaluate_board_state(self.game_state, player_idx)
         is_done = is_game_over(self.game_state)
         return self.get_state(), reward, is_done, {"player": player_idx}
 

@@ -15,18 +15,56 @@ def is_game_over(game_state):
 
 
 def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx):
-    if factory_idx < len(game_state.factories):
-        factory = game_state.factories[factory_idx]
-        if tile in factory:
-            game_state.factories[factory_idx].remove(tile)
+    """
+    Simulate a player's action. Remove the chosen tile from the factory or center pool
+    and place it in the appropriate pattern line or floor. 
+    All remaining tiles in a factory are sent to the center pool.
+    """
+    if factory_idx == "center":  # Action from the center pool
+        if tile in game_state.center_pool:
+            game_state.center_pool.remove(tile)  # Remove selected tile from center pool
+
+            # Add to the specified pattern line or floor line
             if pattern_line_idx == "floor":
                 game_state.player_boards[player_idx]["floor_line"].append(tile)
             else:
-                game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx].append(tile)
+                # Add to the specified pattern line
+                pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+                if len(pattern_line) < pattern_line_idx + 1:  # Ensure capacity matches row
+                    pattern_line.append(tile)
+                else:
+                    raise ValueError(f"Pattern line {pattern_line_idx} is full.")
         else:
-            raise ValueError("Invalid tile selection.")
+            raise ValueError("Tile not available in center pool.")
+    
+    elif isinstance(factory_idx, int) and factory_idx < len(game_state.factories):  # Valid factory index
+        factory = game_state.factories[factory_idx]
+        if tile in factory:
+            # Remove the selected tile and send the rest to the center pool
+            remaining_tiles = [t for t in factory if t != tile]
+            game_state.factories[factory_idx] = []  # Clear the factory
+            game_state.center_pool.extend(remaining_tiles)  # Send remaining tiles to the center pool
+
+            # Add the selected tile to the pattern line or floor
+            if pattern_line_idx == "floor":
+                game_state.player_boards[player_idx]["floor_line"].append(tile)
+            else:
+                # Add to the specified pattern line
+                pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+                if len(pattern_line) < pattern_line_idx + 1:  # Ensure capacity matches row
+                    pattern_line.append(tile)
+                else:
+                    raise ValueError(f"Pattern line {pattern_line_idx} is full.")
+        else:
+            raise ValueError("Invalid tile selection from factory.")
+    
     else:
-        raise ValueError("Invalid factory selection.")
+        raise ValueError("Invalid action. Either factory or center pool should be selected.")
+
+    # If round is over, perform wall tiling phase (if necessary)
+    if game_state.is_round_over():
+        game_state.wall_tiling_phase()
+
     
 def get_valid_actions(game_state, player_idx):
     """
@@ -38,6 +76,7 @@ def get_valid_actions(game_state, player_idx):
     center_pool = game_state.center_pool
     player_board = game_state.player_boards[player_idx]
     pattern_lines = player_board["pattern_lines"]
+    wall = player_board["wall"]
 
     # Add actions for each factory
     for factory_idx, factory in enumerate(factories):
@@ -48,7 +87,10 @@ def get_valid_actions(game_state, player_idx):
                 if (not pattern_lines[pattern_line_idx] or
                     (len(pattern_lines[pattern_line_idx]) < pattern_line_idx + 1 and
                      all(t == tile for t in pattern_lines[pattern_line_idx]))):
-                    actions.append((factory_idx, tile, pattern_line_idx))
+                    
+                    # Check if the tile color is already present in the corresponding wall row
+                    if tile not in wall[pattern_line_idx]:  # Ensure the tile is not already in the wall row
+                        actions.append((factory_idx, tile, pattern_line_idx))
             # Add action to place tile on the floor line
             actions.append((factory_idx, tile, "floor"))
 
@@ -59,21 +101,24 @@ def get_valid_actions(game_state, player_idx):
             if (not pattern_lines[pattern_line_idx] or
                 (len(pattern_lines[pattern_line_idx]) < pattern_line_idx + 1 and
                  all(t == tile for t in pattern_lines[pattern_line_idx]))):
-                actions.append(("center", tile, pattern_line_idx))
+                    
+                # Check if the tile color is already present in the corresponding wall row
+                if tile not in wall[pattern_line_idx]:  # Ensure the tile is not already in the wall row
+                    actions.append(("center", tile, pattern_line_idx))
         # Add action to place tile on the floor line
         actions.append(("center", tile, "floor"))
 
+    # Ensure we don't exceed the maximum number of actions
     while len(actions) < max_actions:
-        actions.append(None) #Use None or another placeholder for invalid actions
+        actions.append(None)  # Use None or another placeholder for invalid actions
 
-    #Truncate to amx_actions if necessary
+    # Truncate to max_actions if necessary
     actions = actions[:max_actions]
 
     # Log valid actions
     # print(f"Valid Actions for Player {player_idx}: {actions}")
 
     return actions
-
 
 
 def encode_board_state(game_state):
@@ -112,51 +157,117 @@ def encode_board_state(game_state):
     features = features[:max_board_size]
     return features
 
-
-
-
-def calculate_scores(player_board):
-    """
-    Calculate the immediate score for a player based on the Azul rules.
-    """
-    wall = player_board["wall"]
-    pattern_lines = player_board["pattern_lines"]
-    floor_line = player_board["floor_line"]
-    score = 0
-
-    # Process pattern lines and move completed rows to the wall
-    for row_idx, line in enumerate(pattern_lines):
-        if len(line) == row_idx + 1:  # Row is complete
-            color = line[0]
-            col_idx = row_idx  # Simplified placement
-            wall[row_idx][col_idx] = color
-            pattern_lines[row_idx] = []
-
-            # Score for the placement
-            score += calculate_wall_score(wall, row_idx, col_idx)
-
-    # Floor line penalty
-    score -= calculate_floor_penalty(floor_line)
-    return score
-
-
-def calculate_wall_score(wall, row, col):
-    """
-    Calculate points for placing a tile based on adjacency.
-    """
-    horizontal = sum(1 for c in range(5) if wall[row][c] is not None) - 1
-    vertical = sum(1 for r in range(5) if wall[r][col] is not None) - 1
-    return max(1, horizontal + vertical)
-
-
-def calculate_floor_penalty(floor_line):
-    """
-    Calculate penalty for tiles in the floor line.
-    """
-    penalties = [-1, -1, -2, -2, -2, -3, -3]
-    return sum(penalties[:len(floor_line)])
-
 def load_game_settings(settings_path="game/game_settings.yaml"):
     with open(settings_path, 'r') as file:
         settings = yaml.safe_load(file)
     return settings
+
+import math
+
+def evaluate_board_state(game_state, player_idx):
+    """
+    Provide a holistic evaluation of the player's board state.
+    Takes into account wall density, pattern line progress, opponent progress, 
+    future scoring potential, and end-of-game bonuses.
+    """
+    player_board = game_state.player_boards[player_idx]
+    wall = player_board["wall"]
+    pattern_lines = player_board["pattern_lines"]
+    floor_line = player_board["floor_line"]
+
+    # Base score factors
+    score = 0
+
+    # Wall density: Penalize even distribution of tiles and reward clusters
+    clustering_penalty = calculate_wall_clustering_penalty(wall)
+    score -= clustering_penalty
+
+    # Pattern line progress: Reward pattern lines close to completion
+    pattern_progress = sum((len(line) / (idx + 1)) for idx, line in enumerate(pattern_lines))
+    score += pattern_progress * 2  # Weighted factor
+
+    # Floor penalties: Penalize tiles in the floor line
+    score -= calculate_floor_penalty(floor_line)
+
+    # Future potential: Reward rows/columns with fewer empty spaces
+    for row_idx, row in enumerate(wall):
+        empty_spaces = row.count(None)
+        score += (5 - empty_spaces) ** 2  # Reward completed rows more heavily
+
+    # Opponent progress comparison
+    opponent_sparsity = [
+        calculate_wall_clustering_penalty(opp_board["wall"])
+        for opp_idx, opp_board in enumerate(game_state.player_boards)
+        if opp_idx != player_idx
+    ]
+    avg_opponent_sparsity = sum(opponent_sparsity) / len(opponent_sparsity)
+    score += (avg_opponent_sparsity - clustering_penalty) * 1.5  # Adjust weight as needed
+
+    # End-of-game bonuses
+    if is_game_over(game_state):
+        # Horizontal line bonus: 2 points per complete row
+        for row in wall:
+            if all(tile is not None for tile in row):
+                score += 2
+
+        # Vertical line bonus: 7 points per complete column
+        for col_idx in range(5):  # Assuming 5 columns
+            if all(wall[row_idx][col_idx] is not None for row_idx in range(5)):
+                score += 7
+
+        # Color set bonus: 10 points for each color with all 5 tiles
+        color_counts = {}
+        for row in wall:
+            for tile in row:
+                if tile is not None:
+                    color_counts[tile] = color_counts.get(tile, 0) + 1
+        score += sum(10 for count in color_counts.values() if count == 5)
+
+    # Return the holistic score
+    return score
+
+def calculate_wall_clustering_penalty(wall):
+    """
+    Penalize walls with an even distribution of tiles and reward clustered tiles.
+    Measures clustering by counting adjacent tiles and comparing to total tiles.
+    A higher clustering score means fewer penalties.
+    """
+    total_tiles = 0
+    adjacency_score = 0
+
+    rows, cols = len(wall), len(wall[0])
+    for row in range(rows):
+        for col in range(cols):
+            if wall[row][col] is not None:
+                total_tiles += 1
+                # Check adjacent tiles
+                for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # Up, down, left, right
+                    adj_row, adj_col = row + dr, col + dc
+                    if 0 <= adj_row < rows and 0 <= adj_col < cols and wall[adj_row][adj_col] is not None:
+                        adjacency_score += 1
+
+    if total_tiles == 0:
+        return 0  # No penalty for empty walls
+
+    # Normalize adjacency score by dividing by total possible adjacent pairs
+    max_adjacencies = total_tiles * 4  # Each tile can have 4 neighbors
+    clustering_score = adjacency_score / max_adjacencies
+
+    # Penalize evenly spread tiles (low clustering score leads to higher penalty)
+    return math.exp(-5 * clustering_score) * 10  # Adjust exponential scaling and weight as needed
+
+def calculate_floor_penalty(floor_line):
+    """
+    Calculate the total penalty for tiles left on the floor line.
+    Uses a predefined penalty structure where the first few tiles incur less penalty.
+    """
+    penalties = [-1, -1, -2, -2, -2, -3, -3]  # Standard Azul floor penalties
+    total_penalty = 0
+
+    for idx, tile in enumerate(floor_line):
+        if idx < len(penalties):
+            total_penalty += penalties[idx]
+        else:
+            total_penalty += penalties[-1]  # Apply max penalty for additional tiles
+
+    return total_penalty
