@@ -35,7 +35,8 @@ class GameState:
             {
                 "pattern_lines": [[] for _ in range(self.pattern_line_size)],
                 "wall": [row[:] for row in self.wall_pattern],
-                "floor_line": []
+                "floor_line": [],
+                "score": 0
             }
             for _ in range(self.num_players)
         ]
