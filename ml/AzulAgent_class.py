@@ -3,6 +3,7 @@ import torch.optim as optim
 import random
 from ml.DQN_class import DQN
 import torch.nn as nn
+import numpy as np
 
 class AzulAgent:
     
@@ -16,28 +17,36 @@ class AzulAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
 
-    def select_action_index(self, state, valid_actions):
+    def mask_invalid_actions(self, q_values, valid_action_indices):
         """
-        Select an action from the valid actions using an epsilon-greedy policy.
+        Mask invalid actions by setting their Q-values to a very low value.
         """
 
-        # Filter out invalid actions (padded actions)
-        valid_action_indeces = [idx for idx, action in enumerate(valid_actions) if action != None]
+        mask = np.ones(q_values.shape, dtype=bool)
+        mask[valid_action_indices] = False
+        q_values[mask] = -np.inf  # Set invalid actions to a very low value
+        return q_values
 
-        if not valid_action_indeces:
-            raise ValueError("No valid actaions available to select from")
-        
+    def select_action_index(self, state, env, player_idx):
+        """
+        Select an action index using epsilon-greedy policy, with masking for valid actions.
+        """
+        valid_action_indices = env.get_valid_action_indices()
+
+        if not valid_action_indices:
+            raise ValueError("No valid actions available to select from.")
+
         if random.random() < self.epsilon:
-            selected_index = random.choice(valid_action_indeces)  # Explore by selecting a random valid action
+            selected_index = random.choice(valid_action_indices)  # Explore
         else:
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0)
-                q_values = self.q_network(state_tensor).detach().numpy()
-                # Filter Q-values to only valid actions
-                valid_q_values = [(q_values[0, action_idx], action_idx) for action_idx in valid_action_indeces]
-                selected_index = max(valid_q_values, key=lambda x: x[0])[1]
+                q_values = self.q_network(state_tensor).detach().numpy()[0]
+                q_values = self.mask_invalid_actions(q_values, valid_action_indices)
+                selected_index = np.argmax(q_values)  # Exploit
 
         return selected_index
+
 
     def update(self, state, action_index, reward, next_state, done):
         """

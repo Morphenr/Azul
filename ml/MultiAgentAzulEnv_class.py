@@ -17,6 +17,14 @@ class MultiAgentAzulEnv:
         if len(agents) != self.num_players:
             raise ValueError("Number of agents must match the number of players.")
         self.agents = agents
+    
+    def get_valid_action_indices(self):
+        """
+        Convert valid actions from `get_valid_actions` into indices for the fixed action space.
+        """
+        valid_actions = get_valid_actions(self.game_state, self.current_player)
+        valid_action_indices = [self.game_state.get_action_space_mapper().action_to_index(action) for action in valid_actions if action is not None]
+        return valid_action_indices
 
     def get_state(self):
         return encode_board_state(self.game_state)
@@ -37,26 +45,42 @@ class MultiAgentAzulEnv:
 
 
     def play_game(self, max_turns=100):
+        """
+        Play a game until it ends or the maximum number of turns is reached.
+        """
         state = self.reset()
         turn_count = 0
 
-        while not self.game_state.is_game_over(): #and turn_count < max_turns:
+        while not self.game_state.is_game_over():  # and turn_count < max_turns:
             agent = self.agents[self.current_player]
-            valid_actions = get_valid_actions(self.game_state, self.current_player)
 
-            if not valid_actions:
+            # Get valid action indices for the current player
+            valid_action_indices = self.get_valid_action_indices()
+
+            if not valid_action_indices:
                 raise ValueError(f"No valid actions available for player {self.current_player}.")
 
-            action_index = agent.select_action_index(state, valid_actions)
-            next_state, reward, _, _ = self.step(valid_actions[action_index])
+            # Agent selects an action index
+            action_index = agent.select_action_index(state, self, self.current_player)
+
+            # Map the action index to the actual action
+            action = self.game_state.get_action_space_mapper().index_to_action(action_index)
+
+            # Apply the action and get the new state
+            next_state, reward, _, _ = self.step(action)
+
+            # Update the agent's knowledge (e.g., Q-values or memory buffer)
             agent.update(state, action_index, reward, next_state, False)
+
+            # Prepare for the next turn
             state = next_state
             turn_count += 1
             self.current_player = (self.current_player + 1) % self.num_players
 
+            # Handle round completion
             if self.game_state.is_round_over():
                 self.game_state.wall_tiling_phase()
 
-        # Check if the game is over
-        return self.game_state.__str__()
+        return self.game_state
+
 

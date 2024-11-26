@@ -1,6 +1,6 @@
 from ml.MultiAgentAzulEnv_class import MultiAgentAzulEnv
 from ml.AzulAgent_class import AzulAgent
-from helper_functions.helper_functions import encode_board_state, get_valid_actions, load_game_settings
+from helper_functions.helper_functions import encode_board_state, load_game_settings
 
 
 def train_multi_agent(episodes=100):
@@ -26,10 +26,9 @@ def train_multi_agent(episodes=100):
     input_dim = len(encoded_state)
     print(f"Input dimension determined: {input_dim} features in the encoded state.")
 
-    # Retrieve the valid actions for player 0 as a reference
-    print("Retrieving valid actions for player 0...")
-    valid_actions = get_valid_actions(env.game_state, 0)  # Using player 0 as reference
-    action_dim = len(valid_actions)
+    # Retrieve the valid action space
+    print("Retrieving size of action space")
+    action_dim = len(env.game_state.get_action_space_mapper().index_to_action_map)
     print(f"Valid actions retrieved. Action dimension: {action_dim} possible actions.")
 
     # Initialize agents for each player based on the game settings

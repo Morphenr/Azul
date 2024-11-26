@@ -1,6 +1,7 @@
 import random
 from helper_functions.helper_functions import load_game_settings
 from helper_functions.TileColorMapping_class import TileColorMapping
+from helper_functions.ActionSpaceMapper_class import ActionSpaceMapper
 
 class GameState:
     def __init__(self, settings_path='game_settings.yaml'):
@@ -14,7 +15,11 @@ class GameState:
         self.num_players = self.settings["num_players"]
         self.num_factories = self.settings["num_factories"]
         self.tile_colors = self.settings["tile_colors"]
+        self.pattern_line_size = self.settings.get("pattern_line_size")
+
         self.tile_color_mapping = TileColorMapping(self.settings["tile_colors"])
+        # Initialize the ActionSpaceMapper
+        self.action_space_mapper = ActionSpaceMapper(self)
         
         print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
 
@@ -23,9 +28,7 @@ class GameState:
             raise ValueError("Number of factories must be greater than zero.")
         if self.num_players <= 0:
             raise ValueError("Number of players must be greater than zero.")
-        
-        # Define pattern line size and wall pattern based on the settings (ensure defaults are set)
-        self.pattern_line_size = self.settings.get("pattern_line_size")
+    
 
         # Initialize factories, center pool, and player boards
         self.factories = [[] for _ in range(self.num_factories)]
@@ -75,6 +78,7 @@ class GameState:
             game_state_str += f"  Score: {board['score']}\n"
 
         game_state_str += f"Discard Pile: {self.discard_pile}\n"
+        game_state_str += f"Tiles in Bag: {self.bag}\n"
 
         return game_state_str
 
@@ -114,11 +118,15 @@ class GameState:
     def refill_factories(self):
         """
         Refill the factories at the start of a new round.
+        Raise an error if any factory is non-empty.
         """
         print("Refilling factories for a new round...")
+        
         for factory in self.factories:
-            factory.clear()  # Clear factories from the previous round
+            if factory:  # Check if the factory is not empty
+                raise AssertionError("Cannot refill a non-empty factory.")
             factory.extend(self.draw_tiles(4))  # Each factory gets 4 tiles
+        
         print(f"Refilled {len(self.factories)} factories.")
 
     def reset(self):
@@ -322,3 +330,9 @@ class GameState:
                     print(f"Final Games state: {self.__str__}")
                     return True
         return self.round_number > 100  # Safety net if rounds exceed 100
+    
+    def get_action_space_mapper(self):
+        """
+        Provide access to the ActionSpaceMapper.
+        """
+        return self.action_space_mapper

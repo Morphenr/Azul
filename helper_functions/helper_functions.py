@@ -2,48 +2,70 @@ import yaml
 
 def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx):
     """
-    Simulate a player's action. Remove the chosen tile from the factory or center pool
-    and place it in the appropriate pattern line or floor. 
+    Simulate a player's action. Remove the chosen tile(s) from the factory or center pool
+    and place them in the appropriate pattern line or floor. 
     All remaining tiles in a factory are sent to the center pool.
     """
-    if factory_idx == "center":  # Action from the center pool
-        if tile in game_state.center_pool:
-            game_state.center_pool.remove(tile)  # Remove selected tile from center pool
+    #print(f"Player ID: {player_idx}")
+    #print(f"Selected factory: {factory_idx}")
+    #print(f"Selected tile color: {tile}")
+    #print(f"Selected Pattern Line: {pattern_line_idx}")
+    #print("--")
 
-            # Add to the specified pattern line or floor line
-            if pattern_line_idx == "floor":
-                game_state.player_boards[player_idx]["floor_line"].append(tile)
-            else:
-                # Add to the specified pattern line
-                pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
-                if len(pattern_line) < pattern_line_idx + 1:  # Ensure capacity matches row
-                    pattern_line.append(tile)
-                else:
-                    raise ValueError(f"Pattern line {pattern_line_idx} is full.")
-        else:
+    if factory_idx == "center":  # Action from the center pool
+        # Count the number of tiles of the selected color in the center pool
+        selected_tiles = [t for t in game_state.center_pool if t == tile]
+        if not selected_tiles:
             raise ValueError("Tile not available in center pool.")
-    
+
+        # Remove the selected tiles from the center pool
+        for _ in selected_tiles:
+            game_state.center_pool.remove(tile)
+
+        if pattern_line_idx == "floor":
+            # Place all remaining selected tiles into the floor line
+            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+        else:
+            # Try to place tiles in the specified pattern line
+            pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+            max_capacity = pattern_line_idx + 1  # The maximum capacity of this pattern line (1-based)
+
+            # Place tiles in the pattern line
+            while selected_tiles and len(pattern_line) < max_capacity:
+                pattern_line.append(selected_tiles.pop())
+
+            # Any remaining tiles must go to the floor line
+            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+
     elif isinstance(factory_idx, int) and factory_idx < len(game_state.factories):  # Valid factory index
         factory = game_state.factories[factory_idx]
-        if tile in factory:
-            # Remove the selected tile and send the rest to the center pool
-            remaining_tiles = [t for t in factory if t != tile]
-            game_state.factories[factory_idx] = []  # Clear the factory
-            game_state.center_pool.extend(remaining_tiles)  # Send remaining tiles to the center pool
+        
+        # Count the number of selected tiles in the factory
+        selected_tiles = [t for t in factory if t == tile]
+        if not selected_tiles:
+            raise ValueError("Tile not available in the selected factory.")
 
-            # Add the selected tile to the pattern line or floor
-            if pattern_line_idx == "floor":
-                game_state.player_boards[player_idx]["floor_line"].append(tile)
-            else:
-                # Add to the specified pattern line
-                pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
-                if len(pattern_line) < pattern_line_idx + 1:  # Ensure capacity matches row
-                    pattern_line.append(tile)
-                else:
-                    raise ValueError(f"Pattern line {pattern_line_idx} is full.")
+        # Remove the selected tiles from the factory and send the rest to the center pool
+        for _ in selected_tiles:
+            factory.remove(tile)  # Remove selected tiles from the factory
+        
+        game_state.center_pool.extend(factory)  # Send the remaining tiles to the center pool
+
+        if pattern_line_idx == "floor":
+            # Place all remaining selected tiles into the floor line
+            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
         else:
-            raise ValueError("Invalid tile selection from factory.")
-    
+            # Try to place tiles in the specified pattern line
+            pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+            max_capacity = pattern_line_idx + 1  # The maximum capacity of this pattern line (1-based)
+
+            # Place tiles in the pattern line
+            while selected_tiles and len(pattern_line) < max_capacity:
+                pattern_line.append(selected_tiles.pop())
+
+            # Any remaining tiles must go to the floor line
+            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+
     else:
         raise ValueError("Invalid action. Either factory or center pool should be selected.")
 
@@ -54,7 +76,8 @@ def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx)
     
 def get_valid_actions(game_state, player_idx):
     """
-    Get all valid actions for the current board state and player.
+    Get all valid actions for the current board state and player, dynamically
+    using values from the game state.
     """
     max_actions = game_state.max_actions
     actions = []
@@ -63,6 +86,7 @@ def get_valid_actions(game_state, player_idx):
     player_board = game_state.player_boards[player_idx]
     pattern_lines = player_board["pattern_lines"]
     wall = player_board["wall"]
+    wall_pattern = player_board["wall_pattern"]
 
     # Add actions for each factory
     for factory_idx, factory in enumerate(factories):
@@ -70,12 +94,13 @@ def get_valid_actions(game_state, player_idx):
         for tile in tile_colors:
             # Check if tile can be placed on a pattern line
             for pattern_line_idx in range(len(pattern_lines)):
-                if (not pattern_lines[pattern_line_idx] or
+                if (
+                    not pattern_lines[pattern_line_idx] or
                     (len(pattern_lines[pattern_line_idx]) < pattern_line_idx + 1 and
-                     all(t == tile for t in pattern_lines[pattern_line_idx]))):
-                    
-                    # Check if the tile color is already present in the corresponding wall row
-                    if tile not in wall[pattern_line_idx]:  # Ensure the tile is not already in the wall row
+                     all(t == tile for t in pattern_lines[pattern_line_idx]))
+                ):
+                    # Ensure the tile color is not already in the corresponding wall row
+                    if tile not in wall[pattern_line_idx]:
                         actions.append((factory_idx, tile, pattern_line_idx))
             # Add action to place tile on the floor line
             actions.append((factory_idx, tile, "floor"))
@@ -84,12 +109,13 @@ def get_valid_actions(game_state, player_idx):
     tile_colors = set(center_pool)
     for tile in tile_colors:
         for pattern_line_idx in range(len(pattern_lines)):
-            if (not pattern_lines[pattern_line_idx] or
+            if (
+                not pattern_lines[pattern_line_idx] or
                 (len(pattern_lines[pattern_line_idx]) < pattern_line_idx + 1 and
-                 all(t == tile for t in pattern_lines[pattern_line_idx]))):
-                    
-                # Check if the tile color is already present in the corresponding wall row
-                if tile not in wall[pattern_line_idx]:  # Ensure the tile is not already in the wall row
+                 all(t == tile for t in pattern_lines[pattern_line_idx]))
+            ):
+                # Ensure the tile color is not already in the corresponding wall row
+                if tile not in wall[pattern_line_idx]:
                     actions.append(("center", tile, pattern_line_idx))
         # Add action to place tile on the floor line
         actions.append(("center", tile, "floor"))
@@ -101,10 +127,8 @@ def get_valid_actions(game_state, player_idx):
     # Truncate to max_actions if necessary
     actions = actions[:max_actions]
 
-    # Log valid actions
-    # print(f"Valid Actions for Player {player_idx}: {actions}")
-
     return actions
+
 
 
 def encode_board_state(game_state):
