@@ -1,79 +1,5 @@
 import yaml
 import math
-
-def simulate_action(game_state, player_idx, factory_idx, tile, pattern_line_idx):
-    """
-    Simulate a player's action. Remove the chosen tile(s) from the factory or center pool
-    and place them in the appropriate pattern line or floor. 
-    All remaining tiles in a factory are sent to the center pool.
-    """
-    #print(f"Player ID: {player_idx}")
-    #print(f"Selected factory: {factory_idx}")
-    #print(f"Selected tile color: {tile}")
-    #print(f"Selected Pattern Line: {pattern_line_idx}")
-    #print("--")
-
-    if factory_idx == "center":  # Action from the center pool
-        # Count the number of tiles of the selected color in the center pool
-        selected_tiles = [t for t in game_state.center_pool if t == tile]
-        if not selected_tiles:
-            raise ValueError("Tile not available in center pool.")
-
-        # Remove the selected tiles from the center pool
-        for _ in selected_tiles:
-            game_state.center_pool.remove(tile)
-
-        if pattern_line_idx == "floor":
-            # Place all remaining selected tiles into the floor line
-            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
-        else:
-            # Try to place tiles in the specified pattern line
-            pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
-            max_capacity = pattern_line_idx + 1  # The maximum capacity of this pattern line (1-based)
-
-            # Place tiles in the pattern line
-            while selected_tiles and len(pattern_line) < max_capacity:
-                pattern_line.append(selected_tiles.pop())
-
-            # Any remaining tiles must go to the floor line
-            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
-
-    elif isinstance(factory_idx, int) and factory_idx < len(game_state.factories):  # Valid factory index
-        factory = game_state.factories[factory_idx]
-        
-        # Count the number of selected tiles in the factory
-        selected_tiles = [t for t in factory if t == tile]
-        if not selected_tiles:
-            raise ValueError("Tile not available in the selected factory.")
-
-        # Remove the selected tiles from the factory and send the rest to the center pool
-        for _ in selected_tiles:
-            factory.remove(tile)  # Remove selected tiles from the factory
-        
-        game_state.center_pool.extend(factory)  # Send the remaining tiles to the center pool
-
-        if pattern_line_idx == "floor":
-            # Place all remaining selected tiles into the floor line
-            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
-        else:
-            # Try to place tiles in the specified pattern line
-            pattern_line = game_state.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
-            max_capacity = pattern_line_idx + 1  # The maximum capacity of this pattern line (1-based)
-
-            # Place tiles in the pattern line
-            while selected_tiles and len(pattern_line) < max_capacity:
-                pattern_line.append(selected_tiles.pop())
-
-            # Any remaining tiles must go to the floor line
-            game_state.player_boards[player_idx]["floor_line"].extend(selected_tiles)
-
-    else:
-        raise ValueError("Invalid action. Either factory or center pool should be selected.")
-
-    # If round is over, perform wall tiling phase (if necessary)
-    if game_state.is_round_over():
-        game_state.wall_tiling_phase()
-
     
 def get_valid_actions(game_state, player_idx):
     """
@@ -209,6 +135,9 @@ def calculate_positive_attributes(game_state, player_idx):
     
     score = 0
 
+    # Add current game score to evaluation 
+    score += player_board["score"]
+
     # Pattern line progress: Reward pattern lines close to completion
     pattern_progress = sum((len(line) / (idx + 1)) for idx, line in enumerate(pattern_lines))
     score += pattern_progress * 2  # Weighted factor
@@ -238,6 +167,11 @@ def calculate_positive_attributes(game_state, player_idx):
                     color_counts[tile] = color_counts.get(tile, 0) + 1
         score += sum(10 for count in color_counts.values() if count == 5)
 
+        # Winning bonus
+        winning_score = max(player["score"] for player in game_state.player_boards)
+        if player_board["score"] == winning_score:
+            score += 100
+
     return score
 
 def calculate_negative_attributes(game_state, player_idx):
@@ -255,7 +189,7 @@ def calculate_negative_attributes(game_state, player_idx):
     score -= clustering_penalty
 
     # Floor penalties: Penalize tiles in the floor line
-    score += calculate_floor_penalty(floor_line)
+    score += 0.1 * calculate_floor_penalty(floor_line)
 
     return score
 
@@ -269,7 +203,7 @@ def evaluate_board_state(game_state, player_idx):
     # Evaluate positive and negative attributes for the player
     player_positive = calculate_positive_attributes(game_state, player_idx)
     player_negative = calculate_negative_attributes(game_state, player_idx)
-    player_score = player_positive + player_negative  # Total score for the player
+    player_score = player_positive+ player_negative  # Total score for the player
 
     # Opponent evaluation
     opponent_scores = []
@@ -282,7 +216,7 @@ def evaluate_board_state(game_state, player_idx):
             opponent_scores.append(opponent_score)
 
     # Subtract the sum of opponent scores from the player's score (zero-sum game)
-    score = player_score - 0.5*(1/len(game_state.player_boards)) * sum(opponent_scores)
+    score = player_score - 0.1*(1/len(game_state.player_boards)) * sum(opponent_scores)
 
     return score
 

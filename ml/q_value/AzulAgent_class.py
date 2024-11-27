@@ -7,7 +7,7 @@ import numpy as np
 
 class AzulAgent:
     
-    def __init__(self, input_dim, action_dim, lr=0.001, gamma=0.99, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.1):
+    def __init__(self, input_dim, action_dim, lr=0.0001, gamma=0.99, epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.1):
         self.q_network = DQN(input_dim, action_dim)
         self.target_network = DQN(input_dim, action_dim)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
@@ -16,6 +16,8 @@ class AzulAgent:
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
+        self.step_rewards = []  # Store total rewards for each episode
+        self.current_step_reward = 0  # Track rewards for the current episode
 
     def mask_invalid_actions(self, q_values, valid_action_indices):
         """
@@ -50,11 +52,19 @@ class AzulAgent:
 
     def update(self, state, action_index, reward, next_state, done):
         """
-        Update the Q-network using the Bellman equation.
+        Update the Q-network using the Bellman equation and track rewards.
         """
-
+        
         if isinstance(action_index, tuple):
             raise ValueError(f"Expected action as an integer index, but got tuple: {action_index}")
+        
+        # Update cumulative reward
+        self.current_step_reward += reward
+
+        if done:
+            # Store and reset episode reward if the episode ends
+            self.step_rewards.append(self.current_step_reward)
+            self.current_step_reward = 0
 
         state = torch.FloatTensor(state).unsqueeze(0)
         next_state = torch.FloatTensor(next_state).unsqueeze(0)
@@ -77,3 +87,18 @@ class AzulAgent:
 
         # Update epsilon
         self.epsilon = max(self.epsilon * self.epsilon_decay, self.epsilon_min)
+
+    def save_model(self, filepath):
+        """Save the agent's model and metadata to a file."""
+        save_data = {
+            'q_network': self.q_network.state_dict(),
+            'target_network': self.target_network.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'epsilon': self.epsilon,
+            'epsilon_decay': self.epsilon_decay,
+            'epsilon_min': self.epsilon_min,
+            'gamma': self.gamma,
+            'step_rewards': self.step_rewards,
+        }
+        torch.save(save_data, filepath)
+        print(f"Agent saved to {filepath}.")

@@ -1,5 +1,5 @@
 from game.GameState_class import GameState
-from helper_functions.helper_functions import encode_board_state, simulate_action, evaluate_board_state, get_valid_actions
+from helper_functions.helper_functions import encode_board_state, evaluate_board_state, get_valid_actions
 
 class MultiAgentAzulEnv:
     def __init__(self, num_players):
@@ -34,7 +34,7 @@ class MultiAgentAzulEnv:
         player_idx = self.current_player
 
         try:
-            simulate_action(self.game_state, player_idx, factory_idx, tile, pattern_line_idx)
+            self.game_state.take_action(player_idx, factory_idx, tile, pattern_line_idx)
         except ValueError:
             return self.get_state(), -10, False, {"player": player_idx}
 
@@ -70,7 +70,7 @@ class MultiAgentAzulEnv:
             next_state, reward, _, _ = self.step(action)
 
             # Update the agent's knowledge (e.g., Q-values or memory buffer)
-            agent.update(state, action_index, reward, next_state, False)
+            agent.update(state, action_index, reward, next_state, self.game_state.is_game_over())
 
             # Prepare for the next turn
             state = next_state
