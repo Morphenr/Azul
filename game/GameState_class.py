@@ -106,7 +106,7 @@ class GameState:
                 if not self.discard_pile:
                     raise ValueError(f"Both bag and discad pile are empty, cannot draw tiles. Game state: {self.__str__()}")
                 # Refill the bag from the discard pile if it's empty
-                print("Refilling the tile bag from the discard pile...")
+                #print("Refilling the tile bag from the discard pile...")
                 self.bag = self.discard_pile[:]
                 self.discard_pile = []
                 random.shuffle(self.bag)
@@ -201,7 +201,7 @@ class GameState:
         Apply end-of-game bonuses for completed horizontal and vertical lines
         and full color sets.
         """
-        print("Applying end-of-game bonuses...")
+        #print("Applying end-of-game bonuses...")
 
         # Horizontal Line Bonus: Check for complete horizontal lines
         for row in wall:
