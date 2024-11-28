@@ -27,7 +27,7 @@ class MultiAgentAzulEnv:
         return valid_action_indices
 
     def get_state(self):
-        return encode_board_state(self.game_state)
+        return encode_board_state(self.game_state, self.current_player)
 
     def step(self, action):
         factory_idx, tile, pattern_line_idx = action

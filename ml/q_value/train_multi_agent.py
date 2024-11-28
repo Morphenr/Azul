@@ -25,7 +25,7 @@ def train_multi_agent(episodes=2000):
 
     # Encode the board state to determine input dimension
     print("Encoding board state to determine input dimension...")
-    encoded_state = encode_board_state(env.game_state)
+    encoded_state = encode_board_state(env.game_state, 0) # Encode for the first player
     print(f"Encoded State: {encoded_state}")
     input_dim = len(encoded_state)
     print(f"Input dimension determined: {input_dim} features in the encoded state.")

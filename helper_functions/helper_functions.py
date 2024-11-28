@@ -58,7 +58,7 @@ def get_valid_actions(game_state, player_idx):
 
 
 
-def encode_board_state(game_state):
+def encode_board_state(game_state, current_player_idx):
     """
     Encode the game state into a format suitable for ML models.
     Returns a flattened numerical representation with consistent feature positions.
@@ -92,8 +92,11 @@ def encode_board_state(game_state):
     center_pool_encoding.extend([0] * (CENTER_POOL_SIZE - len(center_pool_encoding)))  # Padding to fixed size
     features.extend(center_pool_encoding)
 
-    # Encode player boards (Pattern lines, Wall, Floor line)
-    for board in game_state.player_boards:
+    player_boards_ordered = [game_state.player_boards[(current_player_idx + i) % game_state.num_players] for i in range(game_state.num_players)
+]
+
+    # Encode each player's board
+    for idx, board in enumerate(player_boards_ordered):
         # Pattern lines (max length MAX_PATTERN_LINE_SIZE)
         for line in board["pattern_lines"]:
             pattern_line_encoding = [tile_color_mapping.get(tile, 0) for tile in line]
