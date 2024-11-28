@@ -1,5 +1,5 @@
 [NEAT]
-fitness_criterion     = max
+fitness_criterion     = mean
 fitness_threshold     = 100
 pop_size              = 200
 reset_on_extinction   = True
@@ -47,17 +47,17 @@ weight_mutate_rate      = 0.9
 weight_replace_rate     = 0.1
 
 # node gene options
-node_add_prob = 0.3
-node_delete_prob = 0.15
-conn_add_prob = 0.5
-conn_delete_prob = 0.15
+node_add_prob = 0.05
+node_delete_prob = 0.075
+conn_add_prob = 0.05
+conn_delete_prob = 0.05
 
 # network parameters
 num_hidden              = 0
 num_inputs              = 0
 num_outputs             = 0
 feed_forward            = True
-initial_connection      = fs_neat_hidden
+initial_connection      = unconnected
 
 # genome configuration options
 enabled_default         = True
