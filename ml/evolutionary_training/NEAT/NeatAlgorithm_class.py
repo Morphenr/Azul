@@ -20,7 +20,7 @@ class NeatAlgorithm:
         self.mlflow_reporter = MLflowReporter()
         self.population.add_reporter(self.mlflow_reporter)
         # Define maximum number of turns for a game
-        self.max_turns = num_generations
+        self.max_turns = 1
 
     def run(self):
         # Start an MLflow run

@@ -17,9 +17,8 @@ def evaluate_genome_pairs(genome_ids, genomes, config, num_players, num_games, m
     for _ in range(num_games):
         # Reset and play game
         env = MultiAgentAzulEnv(num_players=num_players)
-        env.reset()
         env.set_agents(agents)
-        final_state = env.play_game(max_turns)
+        final_state = env.play_game(max_turns=max_turns)
 
         # Collect scores for each genome
         for idx, (genome_id, _) in enumerate(genome_agents):

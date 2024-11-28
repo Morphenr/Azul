@@ -410,3 +410,4 @@ class GameState:
         # If round is over, perform wall tiling phase (if necessary)
         if self.is_round_over():
             self.wall_tiling_phase()
+            #print(f"Wall tiling phase complete. Moving to round {self.round_number}.")
