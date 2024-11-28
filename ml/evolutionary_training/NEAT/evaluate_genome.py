@@ -4,7 +4,7 @@ from ml.evolutionary_training.MultiAgentAzulEnv_class import MultiAgentAzulEnv
 import random
 import math
 
-def evaluate_genome_pairs(genome_ids, genomes, config, num_players, num_games):
+def evaluate_genome_pairs(genome_ids, genomes, config, num_players, num_games, max_turns):
     """
     Play multiple games with the same genome pairing and return averaged scores.
     """
@@ -19,7 +19,7 @@ def evaluate_genome_pairs(genome_ids, genomes, config, num_players, num_games):
         env = MultiAgentAzulEnv(num_players=num_players)
         env.reset()
         env.set_agents(agents)
-        final_state = env.play_game()
+        final_state = env.play_game(max_turns)
 
         # Collect scores for each genome
         for idx, (genome_id, _) in enumerate(genome_agents):

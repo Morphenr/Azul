@@ -19,8 +19,8 @@ class NeatAlgorithm:
         # Add the custom MLflow reporter
         self.mlflow_reporter = MLflowReporter()
         self.population.add_reporter(self.mlflow_reporter)
-        # Optionally, add Checkpointer to save progress
-        # self.population.add_reporter(neat.Checkpointer(5))
+        # Define maximum number of turns for a game
+        self.max_turns = num_generations
 
     def run(self):
         # Start an MLflow run
@@ -42,8 +42,7 @@ class NeatAlgorithm:
 
             return winner
 
-    @staticmethod
-    def evaluate_genomes(genomes, config):
+    def evaluate_genomes(self, genomes, config):
         # Load dynamic game settings
         game_settings = load_game_settings()
         num_players = game_settings['num_players']
@@ -57,7 +56,7 @@ class NeatAlgorithm:
 
         # Prepare multiprocessing arguments
         args = [
-            (genome_ids, genome_dict, config, num_players, num_games) for genome_ids in genome_pairs
+            (genome_ids, genome_dict, config, num_players, num_games, self.max_turns) for genome_ids in genome_pairs
         ]
 
         # Parallel evaluation of games
@@ -71,5 +70,17 @@ class NeatAlgorithm:
                 scores[genome_id].append(average_score)
 
         # Assign fitness scores
+        total_fitness = 0
         for genome_id, genome in genomes:
             genome.fitness = sum(scores[genome_id]) / len(scores[genome_id]) if scores[genome_id] else 0
+            total_fitness += genome.fitness
+
+        # Calculate the average fitness of the population
+        avg_fitness = total_fitness / len(genomes)
+        print(f"Average fitness: {avg_fitness}")
+
+        if avg_fitness > 0:
+            self.max_turns += num_players
+
+        return avg_fitness
+
