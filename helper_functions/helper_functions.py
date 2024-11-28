@@ -57,7 +57,6 @@ def get_valid_actions(game_state, player_idx):
     return actions
 
 
-
 def encode_board_state(game_state, current_player_idx):
     """
     Encode the game state into a format suitable for ML models.
@@ -65,19 +64,18 @@ def encode_board_state(game_state, current_player_idx):
     """
     max_board_size = game_state.max_board_size
     features = []
-    
+
     # Use the TileColorMapping object from the game state
     tile_color_mapping = game_state.tile_color_mapping
+    num_tile_types = len(game_state.tile_colors)
 
     # Constants for fixed lengths (you can modify these based on your specific game design)
-    NUM_FACTORIES = len(game_state.factories)  # Number of factories
+    NUM_FACTORIES = len(game_state.factories)
     FACTORY_SIZE = max(len(factory) for factory in game_state.factories)  # Max number of tiles in any factory
-    MAX_PATTERN_LINE_SIZE = max(len(line) for player_board in game_state.player_boards for line in player_board["pattern_lines"])
+    MAX_PATTERN_LINE_SIZE = max(
+        len(line) for player_board in game_state.player_boards for line in player_board["pattern_lines"])
     MAX_WALL_SIZE = len(game_state.player_boards[0]["wall"])  # Assuming all players have the same wall size
     MAX_FLOOR_SIZE = max(len(board["floor_line"]) for board in game_state.player_boards)
-
-    # Define a fixed size for the center pool (you can adjust this value as needed)
-    CENTER_POOL_SIZE = NUM_FACTORIES *  3 + 1 # At most three tiles from each factory get placed, plus one for the first starter
 
     # Encode factories
     for factory in game_state.factories:
@@ -86,14 +84,16 @@ def encode_board_state(game_state, current_player_idx):
         factory_encoding.extend([0] * (FACTORY_SIZE - len(factory)))  # Padding to fixed size
         features.extend(factory_encoding)
 
-    # Encode center pool (fixed size CENTER_POOL_SIZE)
-    center_pool_encoding = [tile_color_mapping.get(tile, 0) for tile in game_state.center_pool]
-    center_pool_encoding = center_pool_encoding[:CENTER_POOL_SIZE]  # Truncate to fixed size
-    center_pool_encoding.extend([0] * (CENTER_POOL_SIZE - len(center_pool_encoding)))  # Padding to fixed size
-    features.extend(center_pool_encoding)
+    # Encode center pool (as counts of each tile type)
+    center_pool_counts = [0] * num_tile_types
+    for tile in game_state.center_pool:
+        color_idx = tile_color_mapping.get(tile, -1)
+        if color_idx != -1:
+            center_pool_counts[color_idx] += 1
+    features.extend(center_pool_counts)
 
-    player_boards_ordered = [game_state.player_boards[(current_player_idx + i) % game_state.num_players] for i in range(game_state.num_players)
-]
+    player_boards_ordered = [game_state.player_boards[(current_player_idx + i) % game_state.num_players] for i in
+                             range(game_state.num_players)]
 
     # Encode each player's board
     for idx, board in enumerate(player_boards_ordered):
@@ -102,7 +102,7 @@ def encode_board_state(game_state, current_player_idx):
             pattern_line_encoding = [tile_color_mapping.get(tile, 0) for tile in line]
             pattern_line_encoding.extend([0] * (MAX_PATTERN_LINE_SIZE - len(line)))  # Padding
             features.extend(pattern_line_encoding)
-        
+
         # Wall rows (max length MAX_WALL_SIZE)
         for wall_row in board["wall"]:
             wall_row_encoding = [tile_color_mapping.get(tile, 0) for tile in wall_row]
@@ -120,7 +120,6 @@ def encode_board_state(game_state, current_player_idx):
     features = features[:max_board_size]  # Truncate if necessary
 
     return features
-
 
 
 def load_game_settings(settings_path="game/game_settings.yaml"):
