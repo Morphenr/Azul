@@ -5,7 +5,7 @@ from helper_functions.ActionSpaceMapper_class import ActionSpaceMapper
 
 class GameState:
     def __init__(self, settings_path='game_settings.yaml'):
-        print("Loading game settings...")
+        #print("Loading game settings...")
         self.settings = load_game_settings()
         
         # Ensure settings are loaded correctly
@@ -21,7 +21,7 @@ class GameState:
         # Initialize the ActionSpaceMapper
         self.action_space_mapper = ActionSpaceMapper(self)
         
-        print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
+        #print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
 
         # Ensure the number of factories and players are valid
         if self.num_factories <= 0:

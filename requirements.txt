@@ -4,3 +4,4 @@ pyyaml
 plotly
 mlflow==2.14
 kaleido
+neat-python
