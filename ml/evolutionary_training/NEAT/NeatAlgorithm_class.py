@@ -80,7 +80,7 @@ class NeatAlgorithm:
         print(f"Average fitness: {avg_fitness}")
 
         if avg_fitness > 0:
-            self.max_turns += num_players
+            self.max_turns += 1
 
         return avg_fitness
 

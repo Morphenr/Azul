@@ -59,67 +59,93 @@ def get_valid_actions(game_state, player_idx):
 
 def encode_board_state(game_state, current_player_idx):
     """
-    Encode the game state into a format suitable for ML models.
-    Returns a flattened numerical representation with consistent feature positions.
+    Encode the game state into a simplified format suitable for ML models.
+    Returns a flattened numerical representation with reduced features.
     """
-    max_board_size = game_state.max_board_size
     features = []
 
-    # Use the TileColorMapping object from the game state
     tile_color_mapping = game_state.tile_color_mapping
     num_tile_types = len(game_state.tile_colors)
+    pattern_line_size  = game_state.pattern_line_size
+    factory_size = game_state.factory_size
 
-    # Constants for fixed lengths (you can modify these based on your specific game design)
-    NUM_FACTORIES = len(game_state.factories)
-    FACTORY_SIZE = max(len(factory) for factory in game_state.factories)  # Max number of tiles in any factory
-    MAX_PATTERN_LINE_SIZE = max(
-        len(line) for player_board in game_state.player_boards for line in player_board["pattern_lines"])
-    MAX_WALL_SIZE = len(game_state.player_boards[0]["wall"])  # Assuming all players have the same wall size
-    MAX_FLOOR_SIZE = max(len(board["floor_line"]) for board in game_state.player_boards)
+    # Constants
+    num_players = game_state.num_players
 
-    # Encode factories
+    # Encode factories: For each factory, counts of each tile color
     for factory in game_state.factories:
-        # Each factory's tiles should be padded/truncated to FACTORY_SIZE
-        factory_encoding = [tile_color_mapping.get(tile, 0) for tile in factory]
-        factory_encoding.extend([0] * (FACTORY_SIZE - len(factory)))  # Padding to fixed size
-        features.extend(factory_encoding)
+        factory_counts = [0] * num_tile_types
+        for tile in factory:
+            color_idx = tile_color_mapping.get(tile, -1)
+            if color_idx != -1:
+                factory_counts[color_idx] += 1
+        factory_counts = [count / factory_size for count in factory_counts]
+        features.extend(factory_counts)
 
-    # Encode center pool (as counts of each tile type)
+    # Encode center pool: Counts of each tile color
     center_pool_counts = [0] * num_tile_types
     for tile in game_state.center_pool:
         color_idx = tile_color_mapping.get(tile, -1)
         if color_idx != -1:
             center_pool_counts[color_idx] += 1
+    center_pool_counts = [count / (num_tile_types * factory_size) for count in center_pool_counts]
     features.extend(center_pool_counts)
 
-    player_boards_ordered = [game_state.player_boards[(current_player_idx + i) % game_state.num_players] for i in
-                             range(game_state.num_players)]
+    # Get current player's board
+    current_player_board = game_state.player_boards[current_player_idx]
 
-    # Encode each player's board
-    for idx, board in enumerate(player_boards_ordered):
-        # Pattern lines (max length MAX_PATTERN_LINE_SIZE)
-        for line in board["pattern_lines"]:
-            pattern_line_encoding = [tile_color_mapping.get(tile, 0) for tile in line]
-            pattern_line_encoding.extend([0] * (MAX_PATTERN_LINE_SIZE - len(line)))  # Padding
-            features.extend(pattern_line_encoding)
+    # Encode current player's pattern lines
+    for line_idx, line in enumerate(current_player_board["pattern_lines"]):
+        if line:
+            # Assuming pattern lines can only have one color per line
+            tile_color = tile_color_mapping.get(line[0], 0)
+            num_tiles = len(line)
+        else:
+            tile_color = 0
+            num_tiles = 0
+        features.append(tile_color / num_tile_types)
+        features.append(num_tiles / (line_idx + 1) )
 
-        # Wall rows (max length MAX_WALL_SIZE)
-        for wall_row in board["wall"]:
-            wall_row_encoding = [tile_color_mapping.get(tile, 0) for tile in wall_row]
-            wall_row_encoding.extend([0] * (MAX_WALL_SIZE - len(wall_row)))  # Padding
-            features.extend(wall_row_encoding)
+    # Encode current player's wall: counts per tile color
+    wall_tile_counts = [0] * num_tile_types
+    for row in current_player_board["wall"]:
+        for tile in row:
+            if tile != 0:
+                color_idx = tile_color_mapping.get(tile, -1)
+                if color_idx != -1:
+                    wall_tile_counts[color_idx] += 1
+    features.extend(wall_tile_counts) # not normalised as already [0,1]
 
-        # Floor line (max length MAX_FLOOR_SIZE)
-        floor_line_encoding = [tile_color_mapping.get(tile, 0) for tile in board["floor_line"]]
-        floor_line_encoding.extend([0] * (MAX_FLOOR_SIZE - len(board["floor_line"])))  # Padding
-        features.extend(floor_line_encoding)
+    # Encode current player's floor line: counts per tile color
+    floor_line_counts = [0] * num_tile_types
+    for tile in current_player_board["floor_line"]:
+        color_idx = tile_color_mapping.get(tile, -1)
+        if color_idx != -1:
+            floor_line_counts[color_idx] += 1
+    features.extend(floor_line_counts) # not normalised
 
-    # Padding or truncating to max_board_size
-    while len(features) < max_board_size:
-        features.append(0)  # Use 0 or another placeholder for padding
-    features = features[:max_board_size]  # Truncate if necessary
+    # Encode opponent(s) with less detail
+    for idx in range(num_players):
+        if idx == current_player_idx:
+            continue
+        opponent_board = game_state.player_boards[idx]
+
+        # Total tiles in pattern lines
+        total_pattern_tiles = sum(len(line) for line in opponent_board["pattern_lines"])
+        features.append(total_pattern_tiles / (pattern_line_size * 5))
+
+        # Total tiles on wall
+        total_wall_tiles = sum(1 for row in opponent_board["wall"] for tile in row if tile != 0)
+        features.append(total_wall_tiles / pattern_line_size**2)
+
+        # Total tiles in floor line
+        total_floor_tiles = len(opponent_board["floor_line"])
+
+        features.extend([total_pattern_tiles, total_wall_tiles, total_floor_tiles])
 
     return features
+
+
 
 
 def load_game_settings(settings_path="game/game_settings.yaml"):

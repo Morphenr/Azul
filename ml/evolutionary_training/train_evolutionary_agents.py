@@ -15,6 +15,8 @@ def train_evolutionary_agents():
     input_dim = len(encode_board_state(game_state, 0)) # Generate the input_dim sizing
     action_dim = game_state.calculate_max_actions()
 
+    print(f"Input dimension: {input_dim} - Action dimension: {action_dim}")
+
     pop_size = 50
     num_generations = 1000
     mutation_rate = 0.1  # You can adjust the mutation rate

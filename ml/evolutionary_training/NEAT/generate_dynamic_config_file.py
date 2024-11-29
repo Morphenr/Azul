@@ -1,4 +1,13 @@
+def generate_dynamic_config_file(input_dim, output_dim, file_path="config-feedforward.txt"):
+    """
+    Dynamically generate a NEAT configuration file with the specified input and output dimensions.
 
+    Args:
+        input_dim (int): Number of input nodes.
+        output_dim (int): Number of output nodes.
+        file_path (str): Path to save the generated configuration file.
+    """
+    config_content = f"""
 [NEAT]
 fitness_criterion     = mean
 fitness_threshold     = 100
@@ -55,8 +64,8 @@ conn_delete_prob = 0.35
 
 # network parameters
 num_hidden              = 0
-num_inputs              = 55
-num_outputs             = 180
+num_inputs              = {input_dim}
+num_outputs             = {output_dim}
 feed_forward            = True
 initial_connection      = unconnected
 
@@ -75,4 +84,8 @@ species_elitism         = 2
 [DefaultReproduction]
 elitism                 = 1
 survival_threshold      = 0.2
-    
+    """
+
+    # Write the generated content to the specified file
+    with open(file_path, "w") as file:
+        file.write(config_content)

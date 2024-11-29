@@ -6,6 +6,7 @@ from helper_functions.helper_functions import encode_board_state
 from game.GameState_class import GameState
 from ml.evolutionary_training.NEAT.NeatAlgorithm_class import NeatAlgorithm
 from ml.evolutionary_training.NEAT.NeatAgent_class import NeatAgent
+from ml.evolutionary_training.NEAT.generate_dynamic_config_file import generate_dynamic_config_file
 
 def train_neat_agents():
     mlflow.set_experiment('Azul_NEAT_Algorithm')
@@ -13,7 +14,13 @@ def train_neat_agents():
     # Define the path to the NEAT config file
     config_path = os.path.join(os.path.dirname(__file__), 'config-feedforward.txt')
 
-    # Load the NEAT config
+    # Determine input_dim and action_dim
+    game_state = GameState()
+    input_dim = len(encode_board_state(game_state, 0))  # Generate the input_dim
+    action_dim = game_state.calculate_max_actions()
+
+    generate_dynamic_config_file(input_dim, action_dim, file_path=config_path)
+
     config = neat.config.Config(
         neat.DefaultGenome,
         neat.DefaultReproduction,
@@ -22,16 +29,8 @@ def train_neat_agents():
         config_path
     )
 
-    # Determine input_dim and action_dim
-    game_state = GameState()
-    input_dim = len(encode_board_state(game_state, 0))  # Generate the input_dim
-    action_dim = game_state.calculate_max_actions()
-
-    # Set input and output dimensions in the config
-    config.genome_config.num_inputs = input_dim
-    config.genome_config.num_outputs = action_dim
-    config.genome_config.input_keys = [-i - 1 for i in range(config.genome_config.num_inputs)]
-    config.genome_config.output_keys = [i for i in range(config.genome_config.num_outputs)]
+    #config.genome_config.input_keys = range(input_dim)
+    #config.genome_config.output_keys = [i for i in range(config.genome_config.num_outputs)]
 
     print(f"Config - Inputs: {config.genome_config.num_inputs}, Outputs: {config.genome_config.num_outputs}")
 

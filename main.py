@@ -4,4 +4,4 @@ from ml.evolutionary_training.NEAT.train_neat_agents import train_neat_agents
 
 # mlflow ui
 if __name__ == '__main__':
-    train_neat_agents()
+    train_evolutionary_agents()

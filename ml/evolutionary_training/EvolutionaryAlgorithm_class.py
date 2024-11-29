@@ -15,6 +15,7 @@ class EvolutionaryAlgorithm:
         self.population = []
         self.best_agent = None
         self.elite_agents = []
+        self.max_turns = 1
 
     def initialize_population(self):
         self.population = []
@@ -41,7 +42,7 @@ class EvolutionaryAlgorithm:
                 opponents = [opponent] * (self.env.num_players - 1)
             agents = [agent] + opponents
             self.env.set_agents(agents)
-            final_state = self.env.play_game()
+            final_state = self.env.play_game(max_turns=self.max_turns)
             # Find the index of the agent being evaluated
             agent_index = agents.index(agent)
             player_score = final_state.player_boards[agent_index]['score']
@@ -97,6 +98,9 @@ class EvolutionaryAlgorithm:
                 best_fitness = parents[0].fitness
                 avg_fitness = sum(agent.fitness for agent in self.population) / len(self.population)
                 print(f"Generation {generation + 1} - Best fitness: {best_fitness}, Average fitness: {avg_fitness}")
+
+                if avg_fitness >= 0:
+                    self.max_turns += 1
 
                 # Update self.best_agent if necessary
                 if self.best_agent is None or best_fitness > self.best_agent.fitness:

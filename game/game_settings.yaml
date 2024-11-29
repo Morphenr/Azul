@@ -12,4 +12,5 @@ wall_pattern:
   - [black, white, blue, yellow, red]
   - [red, black, white, blue, yellow]
   - [yellow, red, black, white, blue]
-pattern_line_size: 5 
+pattern_line_size: 5
+factory_size: 4

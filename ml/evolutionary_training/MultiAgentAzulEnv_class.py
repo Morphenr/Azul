@@ -35,6 +35,7 @@ class MultiAgentAzulEnv:
 
         try:
             self.game_state.take_action(player_idx, factory_idx, tile, pattern_line_idx)
+            self.current_player = (self.current_player + 1) % self.num_players
         except ValueError:
             # Invalid action, apply penalty
             raise ValueError("Invalid action")
@@ -75,7 +76,6 @@ class MultiAgentAzulEnv:
 
             # Prepare for the next turn
             state = next_state
-            self.current_player = (self.current_player + 1) % self.num_players
 
             # Handle round completion
             if self.game_state.is_round_over():

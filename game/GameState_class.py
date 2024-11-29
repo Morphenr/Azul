@@ -16,6 +16,7 @@ class GameState:
         self.num_factories = self.settings["num_factories"]
         self.tile_colors = self.settings["tile_colors"]
         self.pattern_line_size = self.settings.get("pattern_line_size")
+        self.factory_size = self.settings.get("factory_size")
 
         self.tile_color_mapping = TileColorMapping(self.settings["tile_colors"])
         # Initialize the ActionSpaceMapper
@@ -125,7 +126,7 @@ class GameState:
         for factory in self.factories:
             if factory:  # Check if the factory is not empty
                 raise AssertionError("Cannot refill a non-empty factory.")
-            factory.extend(self.draw_tiles(4))  # Each factory gets 4 tiles
+            factory.extend(self.draw_tiles(self.factory_size))  # Each factory gets 4 tiles
         
         #print(f"Refilled {len(self.factories)} factories.")
 
@@ -410,4 +411,7 @@ class GameState:
         # If round is over, perform wall tiling phase (if necessary)
         if self.is_round_over():
             self.wall_tiling_phase()
-            #print(f"Wall tiling phase complete. Moving to round {self.round_number}.")
+            if self.is_game_over():
+                print(f"Game over! Final scores: {[board['score'] for board in self.player_boards]}")
+            #else:
+                #print(f"Wall tiling phase complete. Moving to round {self.round_number}.")
