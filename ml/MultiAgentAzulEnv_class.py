@@ -1,57 +1,85 @@
-from game.GameState_class import GameState
-from helper_functions.helper_functions import encode_board_state, simulate_action, evaluate_board_state, get_valid_actions
-
 class MultiAgentAzulEnv:
-    def __init__(self, num_players):
+    def __init__(self, num_players, action_space_manager, board_encoder, agents=None):
+        """
+        Initialize the MultiAgentAzulEnv environment.
+        :param num_players: Number of players in the game.
+        :param action_space_manager: Instance of the ActionSpaceManager class.
+        :param board_encoder: Instance of the GameStateEncoder class.
+        :param agents: List of agents for each player (optional).
+        """
         self.num_players = num_players
-        self.agents = [None] * num_players
+        self.agents = agents if agents else [None] * num_players
         self.game_state = GameState(num_players)
         self.current_player = 0
+        self.action_space_manager = action_space_manager
+        self.board_encoder = board_encoder
 
     def reset(self):
+        """
+        Reset the environment to the initial state.
+        :return: Encoded state of the game.
+        """
         self.game_state.reset()
         self.current_player = 0
         return self.get_state()
 
     def set_agents(self, agents):
+        """
+        Assign agents to players.
+        :param agents: List of agents, one for each player.
+        """
         if len(agents) != self.num_players:
             raise ValueError("Number of agents must match the number of players.")
         self.agents = agents
-    
+
     def get_valid_action_indices(self):
         """
-        Convert valid actions from `get_valid_actions` into indices for the fixed action space.
+        Get valid actions as indices in the fixed action space.
+        :return: List of valid action indices.
         """
-        valid_actions = get_valid_actions(self.game_state, self.current_player)
-        valid_action_indices = [self.game_state.get_action_space_mapper().action_to_index(action) for action in valid_actions if action is not None]
+        valid_actions = self.action_space_manager.get_valid_actions(self.game_state, self.current_player)
+        valid_action_indices = [
+            self.action_space_manager.action_to_index(action) for action in valid_actions if action is not None
+        ]
         return valid_action_indices
 
     def get_state(self):
-        return encode_board_state(self.game_state)
+        """
+        Encode the current state of the game.
+        :return: Encoded board state.
+        """
+        return self.board_encoder.encode(self.game_state)
 
     def step(self, action):
+        """
+        Apply the given action to the game state.
+        :param action: Action to take (tuple of factory_idx, tile, pattern_line_idx).
+        :return: Tuple (next_state, reward, is_done, info).
+        """
         factory_idx, tile, pattern_line_idx = action
         player_idx = self.current_player
 
         try:
-            simulate_action(self.game_state, player_idx, factory_idx, tile, pattern_line_idx)
+            self.game_state.take_action(player_idx, factory_idx, tile, pattern_line_idx)
         except ValueError:
+            # Invalid action penalty
             return self.get_state(), -10, False, {"player": player_idx}
 
-        # Access player_boards using dot notation
+        # Evaluate the board state and check if the game is done
         reward = evaluate_board_state(self.game_state, player_idx)
         is_done = self.game_state.is_game_over()
         return self.get_state(), reward, is_done, {"player": player_idx}
 
-
     def play_game(self, max_turns=100):
         """
-        Play a game until it ends or the maximum number of turns is reached.
+        Play a complete game with the current agents.
+        :param max_turns: Maximum number of turns to play.
+        :return: Final game state.
         """
         state = self.reset()
         turn_count = 0
 
-        while not self.game_state.is_game_over():  # and turn_count < max_turns:
+        while not self.game_state.is_game_over() and turn_count < max_turns:
             agent = self.agents[self.current_player]
 
             # Get valid action indices for the current player
@@ -64,15 +92,15 @@ class MultiAgentAzulEnv:
             action_index = agent.select_action_index(state, self, self.current_player)
 
             # Map the action index to the actual action
-            action = self.game_state.get_action_space_mapper().index_to_action(action_index)
+            action = self.action_space_manager.index_to_action(action_index)
 
-            # Apply the action and get the new state
-            next_state, reward, _, _ = self.step(action)
+            # Apply the action and get the next state
+            next_state, reward, is_done, _ = self.step(action)
 
-            # Update the agent's knowledge (e.g., Q-values or memory buffer)
-            agent.update(state, action_index, reward, next_state, False)
+            # Update the agent's strategy
+            agent.update(state, action_index, reward, next_state, is_done)
 
-            # Prepare for the next turn
+            # Update state and prepare for the next turn
             state = next_state
             turn_count += 1
             self.current_player = (self.current_player + 1) % self.num_players
@@ -82,5 +110,3 @@ class MultiAgentAzulEnv:
                 self.game_state.wall_tiling_phase()
 
         return self.game_state
-
-

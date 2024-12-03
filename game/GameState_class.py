@@ -1,7 +1,6 @@
 import random
 from helper_functions.helper_functions import load_game_settings
 from helper_functions.TileColorMapping_class import TileColorMapping
-from helper_functions.ActionSpaceMapper_class import ActionSpaceMapper
 
 class GameState:
     def __init__(self, settings_path='game_settings.yaml'):
@@ -18,8 +17,6 @@ class GameState:
         self.pattern_line_size = self.settings.get("pattern_line_size")
 
         self.tile_color_mapping = TileColorMapping(self.settings["tile_colors"])
-        # Initialize the ActionSpaceMapper
-        self.action_space_mapper = ActionSpaceMapper(self)
         
         print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
 
@@ -36,20 +33,19 @@ class GameState:
         self.player_boards = [
             {
                 "pattern_lines": [[] for _ in range(self.pattern_line_size)],
-                "wall": [row[:] for row in self.settings.get("wall_pattern")],
+                "wall": [[None] * self.pattern_line_size for _ in range(self.pattern_line_size)],
                 "floor_line": [],
                 "score": 0,
                 "wall_pattern": self.settings.get("wall_pattern")
             }
             for _ in range(self.num_players)
         ]
-        
-        self.max_board_size = self.calculate_max_board_size()
-        self.max_actions = self.calculate_max_actions()
 
         self.round_number = 1
+        self.current_player = 0  # Start with the first player
         self.bag = self.initialize_bag()
         self.discard_pile = []
+        self.first_player_tile = True  # Indicates if the first player tile is still in the center pool
 
         print("GameState initialization complete.")
     
@@ -142,6 +138,8 @@ class GameState:
             board["floor_line"] = []
             board["score"] = 0
         self.refill_factories()
+        self.current_player = 0
+        self.first_palyer_tile = True
         print("Game state reset complete.")
 
     def is_round_over(self):
@@ -150,18 +148,25 @@ class GameState:
         """
         round_over_bool = (all(len(factory) == 0 for factory in self.factories) and len(self.center_pool) == 0)
         return round_over_bool
-    
+
     def wall_tiling_phase(self):
         """
         Perform the Wall-tiling phase, including scoring, moving tiles,
-        and discarding leftover tiles.
+        and discarding leftover tiles. Determine the next starting player
+        and handle the first player tile appropriately.
         """
-        #print("Performing wall tiling phase...")
-        for player_board in self.player_boards:
+        print("Performing wall tiling phase...")
+        next_starting_player = None
+
+        for player_idx, player_board in enumerate(self.player_boards):
             pattern_lines = player_board["pattern_lines"]
             wall = player_board["wall"]
             floor_line = player_board["floor_line"]
             wall_pattern = player_board["wall_pattern"]
+
+            # Identify if the player has the first player tile
+            if "first_player_tile" in floor_line:
+                next_starting_player = player_idx  # Set as the starting player for the next round
 
             # Score and move tiles for each pattern line
             for i, pattern_line in enumerate(pattern_lines):
@@ -171,7 +176,7 @@ class GameState:
                     # Find where to place the tile in the wall
                     row_pattern = wall_pattern[i]  # Get the pattern for the current row
                     column = self.find_wall_column(row_pattern, tile_color)
-                    
+
                     # Check if the wall already has a tile in the column
                     if wall[i][column] is not None:
                         raise ValueError(f"Cannot place {tile_color} in row {i}: spot already occupied.")
@@ -179,21 +184,28 @@ class GameState:
                     # Place the tile in the correct position on the wall
                     wall[i][column] = tile_color
                     player_board["score"] += self.calculate_scoring(wall, i, tile_color)  # Custom scoring logic
-                    
 
                     self.discard_pile.extend(pattern_line[:-1])  # Leave out the last tile
                     pattern_line.clear()
 
             # Add floor line penalties
             player_board["score"] += self.calculate_floor_penalty(floor_line)
+
+            # Handle first player tile: Place back into center after penalties
+            if "first_player_tile" in floor_line:
+                floor_line.remove("first_player_tile")
+
+            # Discard the remaining tiles in the floor line
             self.discard_pile.extend(floor_line)
             floor_line.clear()
 
         if self.is_game_over():
-            self.apply_end_game_bonuses(player_board, wall)
+            self.apply_end_game_bonuses()
 
-        # Reset for next round
+        # Reset for the next round
         self.round_number += 1
+        self.current_player = next_starting_player if next_starting_player is not None else 0
+        self.first_player_tile = True  # Reset the first player tile for the next round
         self.refill_factories()
 
     def apply_end_game_bonuses(self, player_board, wall):
@@ -296,29 +308,6 @@ class GameState:
         for i, tile in enumerate(floor_line):
             penalty += penalties[i] if i < len(penalties) else -3
         return penalty
-
-    def calculate_max_board_size(self):
-        """
-        Estimate the maximum size of the encoded board state
-        """
-        max_factory_tiles = self.num_factories * 4
-
-        max_center_pool_tles = max_factory_tiles
-
-        max_pattern_line_tiles = self.pattern_line_size * self.num_players
-        max_wall_tiles = len(self.player_boards[0]["wall_pattern"]) * len(self.player_boards[0]["wall_pattern"][0]) * self.num_players
-        max_floor_line_tiles = 7 * self.num_players
-
-        return max_factory_tiles + max_center_pool_tles + max_pattern_line_tiles + max_wall_tiles + max_floor_line_tiles
-    
-    def calculate_max_actions(self):
-        """
-        Estimate the maximum number of valid actions
-        """
-        max_factory_actions = self.num_factories * len(self.tile_colors) * (self.pattern_line_size + 1)
-        max_centre_actions = len(self.tile_colors) * (self.pattern_line_size + 1)
-
-        return max_centre_actions + max_factory_actions
     
     def is_game_over(self):
         """
@@ -331,9 +320,65 @@ class GameState:
                     print(f"Final Games state: {self.__str__}")
                     return True
         return self.round_number > 100  # Safety net if rounds exceed 100
-    
-    def get_action_space_mapper(self):
+
+    def take_action(self, player_idx, factory_idx, tile, pattern_line_idx):
         """
-        Provide access to the ActionSpaceMapper.
+        Allow a player to take an action in the game by selecting tiles from a factory or the center pool,
+        and placing them in the specified pattern line or floor line.
         """
-        return self.action_space_mapper
+        if player_idx != self.current_player:
+            raise ValueError("It's not this player's turn.")
+
+        if factory_idx == "center":  # Action from the center pool
+            selected_tiles = [t for t in self.center_pool if t == tile]
+            if not selected_tiles:
+                raise ValueError("Tile not available in center pool.")
+
+            for _ in selected_tiles:
+                self.center_pool.remove(tile)
+
+            if self.first_player_tile:  # If this is the first player taking from the center pool
+                self.player_boards[player_idx]["floor_line"].append("first_player_tile")
+                self.first_player_tile = False  # Mark the first player tile as taken
+
+            if pattern_line_idx == "floor":
+                self.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+            else:
+                pattern_line = self.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+                max_capacity = pattern_line_idx + 1
+
+                while selected_tiles and len(pattern_line) < max_capacity:
+                    pattern_line.append(selected_tiles.pop())
+
+                self.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+
+        elif isinstance(factory_idx, int) and 0 <= factory_idx < len(self.factories):  # Valid factory index
+            factory = self.factories[factory_idx]
+            selected_tiles = [t for t in factory if t == tile]
+            if not selected_tiles:
+                raise ValueError("Tile not available in the selected factory.")
+
+            for _ in selected_tiles:
+                factory.remove(tile)
+
+            self.center_pool.extend(factory)
+
+            if pattern_line_idx == "floor":
+                self.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+            else:
+                pattern_line = self.player_boards[player_idx]["pattern_lines"][pattern_line_idx]
+                max_capacity = pattern_line_idx + 1
+
+                while selected_tiles and len(pattern_line) < max_capacity:
+                    pattern_line.append(selected_tiles.pop())
+
+                self.player_boards[player_idx]["floor_line"].extend(selected_tiles)
+        else:
+            raise ValueError("Invalid action. Either factory or center pool should be selected.")
+
+        self.current_player = (self.current_player + 1) % self.num_players
+
+        if self.is_round_over():
+            self.wall_tiling_phase()
+            self.current_player = 0  # Reset to the first player for the next round
+            self.first_player_tile = True  # Reset the first player tile for the new round
