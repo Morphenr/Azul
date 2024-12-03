@@ -4,7 +4,7 @@ from helper_functions.TileColorMapping_class import TileColorMapping
 
 class GameState:
     def __init__(self, settings_path='game_settings.yaml'):
-        print("Loading game settings...")
+        #print("Loading game settings...")
         self.settings = load_game_settings()
         
         # Ensure settings are loaded correctly
@@ -18,7 +18,7 @@ class GameState:
 
         self.tile_color_mapping = TileColorMapping(self.settings["tile_colors"])
         
-        print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
+        #print(f"Loaded {self.num_players} players, {self.num_factories} factories, and tile colors: {self.tile_colors}")
 
         # Ensure the number of factories and players are valid
         if self.num_factories <= 0:
@@ -47,7 +47,7 @@ class GameState:
         self.discard_pile = []
         self.first_player_tile = True  # Indicates if the first player tile is still in the center pool
 
-        print("GameState initialization complete.")
+        #print("GameState initialization complete.")
     
     def __str__(self):
         """
@@ -84,12 +84,12 @@ class GameState:
         Initialize the tile bag based on the colors defined in the game settings.
         The number of tiles for each color is fixed to 20 for simplicity.
         """
-        print("Initializing the tile bag...")
+        #print("Initializing the tile bag...")
         tile_bag = []
         for color in self.tile_colors:
             tile_bag.extend([color] * 20)  # Add 20 tiles of each color to the bag
         random.shuffle(tile_bag)
-        print(f"Tile bag initialized with {len(tile_bag)} tiles.")
+        #print(f"Tile bag initialized with {len(tile_bag)} tiles.")
         return tile_bag
 
     def draw_tiles(self, count):
@@ -102,7 +102,7 @@ class GameState:
                 if not self.discard_pile:
                     raise ValueError(f"Both bag and discad pile are empty, cannot draw tiles. Game state: {self.__str__()}")
                 # Refill the bag from the discard pile if it's empty
-                print("Refilling the tile bag from the discard pile...")
+                #("Refilling the tile bag from the discard pile...")
                 self.bag = self.discard_pile[:]
                 self.discard_pile = []
                 random.shuffle(self.bag)
@@ -126,7 +126,7 @@ class GameState:
         #print(f"Refilled {len(self.factories)} factories.")
 
     def reset(self):
-        print("Resetting the game state...")
+        #print("Resetting the game state...")
         self.round_number = 1
         self.bag = self.initialize_bag()
         self.discard_pile = []
@@ -140,7 +140,7 @@ class GameState:
         self.refill_factories()
         self.current_player = 0
         self.first_palyer_tile = True
-        print("Game state reset complete.")
+        #print("Game state reset complete.")
 
     def is_round_over(self):
         """
@@ -155,7 +155,7 @@ class GameState:
         and discarding leftover tiles. Determine the next starting player
         and handle the first player tile appropriately.
         """
-        print("Performing wall tiling phase...")
+        #print("Performing wall tiling phase...")
         next_starting_player = None
 
         for player_idx, player_board in enumerate(self.player_boards):
@@ -199,8 +199,8 @@ class GameState:
             self.discard_pile.extend(floor_line)
             floor_line.clear()
 
-        if self.is_game_over():
-            self.apply_end_game_bonuses()
+            if self.is_game_over():
+                self.apply_end_game_bonuses(player_board)
 
         # Reset for the next round
         self.round_number += 1
@@ -208,14 +208,15 @@ class GameState:
         self.first_player_tile = True  # Reset the first player tile for the next round
         self.refill_factories()
 
-    def apply_end_game_bonuses(self, player_board, wall):
+    def apply_end_game_bonuses(self, player_board):
         """
         Apply end-of-game bonuses for completed horizontal and vertical lines
         and full color sets.
         """
-        print("Applying end-of-game bonuses...")
+        #print("Applying end-of-game bonuses...")
 
         # Horizontal Line Bonus: Check for complete horizontal lines
+        wall = player_board["wall"]
         for row in wall:
             if None not in row:  # If there are no None values in the row, it's complete
                 player_board["score"] += 2  # 2 points for each complete horizontal line
@@ -316,8 +317,8 @@ class GameState:
         for board in self.player_boards:
             for row in board["wall"]:
                 if all(tile is not None for tile in row):  # Row is complete
-                    print("Game is complete!")
-                    print(f"Final Games state: {self.__str__}")
+                    #print("Game is complete!")
+                    #print(f"Final Games state: {self.__str__()}")
                     return True
         return self.round_number > 100  # Safety net if rounds exceed 100
 
@@ -362,6 +363,7 @@ class GameState:
                 factory.remove(tile)
 
             self.center_pool.extend(factory)
+            factory.clear()
 
             if pattern_line_idx == "floor":
                 self.player_boards[player_idx]["floor_line"].extend(selected_tiles)
@@ -380,5 +382,4 @@ class GameState:
 
         if self.is_round_over():
             self.wall_tiling_phase()
-            self.current_player = 0  # Reset to the first player for the next round
-            self.first_player_tile = True  # Reset the first player tile for the new round
+

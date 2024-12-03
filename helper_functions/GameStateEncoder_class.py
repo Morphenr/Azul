@@ -18,21 +18,21 @@ class GameStateEncoder:
         features = []
 
         # Encode factories and center pool with counts of each tile color
-        print(f"Encoded factories: {self._encode_factories()}")
+        #print(f"Encoded factories: {self._encode_factories()}")
         features.extend(self._encode_factories())
-        print(f"Encoded center pool: {self._encode_center_pool()}")
+        #print(f"Encoded center pool: {self._encode_center_pool()}")
         features.extend(self._encode_center_pool())
 
         # Encode first player tile presence
-        print(f"First player tile present: {1 if self._is_first_player_tile_present() else 0}")
+        #print(f"First player tile present: {1 if self._is_first_player_tile_present() else 0}")
         features.append(1 if self._is_first_player_tile_present() else 0)
 
         # Encode current player board
-        print(f"Encoded player board: {self._encode_player_board(game_state.current_player)}")
+        #print(f"Encoded player board: {self._encode_player_board(game_state.current_player)}")
         features.extend(self._encode_player_board(game_state.current_player))
 
         # Encode simplified opponents' boards
-        print(f"Encoded opponents' boards: {self._encode_opponents_boards()}")
+        #print(f"Encoded opponents' boards: {self._encode_opponents_boards()}")
         features.extend(self._encode_opponents_boards())
 
         return features
