@@ -79,9 +79,8 @@ class MultiAgentAzulEnv:
         :return: Final game state.
         """
         state = self.reset()
-        turn_count = 0
 
-        while not self.game_state.is_game_over() and turn_count < max_turns:
+        while not self.game_state.is_game_over() and self.game_state.round_number <= max_turns:
             agent = self.agents[self.game_state.current_player]
 
             # Get valid action indices for the current player

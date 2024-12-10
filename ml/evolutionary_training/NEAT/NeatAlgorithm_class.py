@@ -5,6 +5,7 @@ import pickle
 from ml.evolutionary_training.NEAT.evaluate_genome import evaluate_genome_pairs, create_genome_pairs
 from ml.evolutionary_training.NEAT.MLFlowReporter_class import MLflowReporter
 from helper_functions.helper_functions import load_game_settings
+
 class NeatAlgorithm:
     def __init__(self, config, num_generations):
         self.config = config
@@ -19,6 +20,7 @@ class NeatAlgorithm:
         self.population.add_reporter(self.mlflow_reporter)
         # Define maximum number of turns for a game
         self.max_turns = 1
+        self.consecutive_positive_fitness_generations = 0  # Counter for consecutive generations
 
     def run(self):
         # Start an MLflow run
@@ -77,11 +79,21 @@ class NeatAlgorithm:
         avg_fitness = total_fitness / len(genomes)
         print(f"Average fitness: {avg_fitness}")
 
+        # Update consecutive positive fitness counter
         if avg_fitness > 0:
-            self.max_turns += 1
-            print(f"Increasing max_turns to {self.max_turns}")
+            self.consecutive_positive_fitness_generations += 1
+            print(f"Consecutive positive fitness generations: {self.consecutive_positive_fitness_generations}")
         else:
-            self.max_turns = 1
-            print(f"Resetting max_turns to {self.max_turns}")
+            self.consecutive_positive_fitness_generations = 0
+            print(f"Consecutive positive fitness generations reset to 0.")
+
+        # Only increase max_turns if average fitness > 0 for 5 consecutive generations
+        if self.consecutive_positive_fitness_generations >= 5:
+            self.max_turns += 1
+            self.consecutive_positive_fitness_generations = 0  # Reset the counter after increasing max_turns
+            print(f"Increasing max_turns to {self.max_turns}")
+
+        # Update max_turns in the MLflowReporter
+        self.mlflow_reporter.max_turns = self.max_turns
 
         return avg_fitness

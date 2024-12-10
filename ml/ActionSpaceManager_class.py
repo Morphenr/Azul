@@ -99,9 +99,9 @@ class ActionSpaceManager:
         for action in valid_actions:
             indices = self.action_to_index(action)
             score = (
-                    activations[indices[0]] +  # Factory/center activation
-                    activations[self.num_factories + 1 + indices[1]] +  # Tile color activation
-                    activations[self.num_factories + 1 + self.num_colors + indices[2]]  # Pattern line activation
+                (activations[indices[0]]) +  # Factory/center activation
+                (activations[self.num_factories + 1 + indices[1]]) +  # Tile color activation
+                (activations[self.num_factories + 1 + self.num_colors + indices[2]])  # Pattern line activation
             )
             action_scores.append((action, score))
 

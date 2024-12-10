@@ -227,10 +227,10 @@ class GameState:
                 player_board["score"] += 7  # 7 points for each complete vertical line
 
         # Full Color Set Bonus: Check if a color is completed across the entire wall
-        for color in ['red', 'blue', 'yellow', 'black', 'white']:  # List of colors
+        for color in self.tile_colors:
             color_count = sum(1 for row in wall for tile in row if tile == color)
-            if color_count == 5:  # All 5 tiles of this color are placed
-                player_board["score"] += 10  # 10 points for completing a color
+            if color_count == self.pattern_line_size:
+                player_board["score"] += 10
 
     def find_wall_column(self, wall_row, tile_color):
         """
@@ -263,53 +263,45 @@ class GameState:
         
         # Find the column index where the tile is being placed
         col_idx = self.find_wall_column(wall[row_idx], tile_color)
-        
-        # Horizontal scoring (left and right adjacency)
-        horizontal_score = 1  # The newly placed tile counts as 1 point
+
+        # Initialize scores as 0
+        horizontal_score = 0
+        vertical_score = 0
+
+        # Horizontal adjacency
         left = col_idx - 1
-        right = col_idx + 1
-        
-        # Check left side for horizontally adjacent tiles
         while len(wall[row_idx]) > left >= 0 and wall[row_idx][left] is not None:
             horizontal_score += 1
             left -= 1
-            
-        # Check right side for horizontally adjacent tiles
+
+        right = col_idx + 1
         while 0 <= right < len(wall[row_idx]) and wall[row_idx][right] is not None:
             horizontal_score += 1
             right += 1
-        
-        # Vertical scoring (up and down adjacency)
-        vertical_score = 1  # The newly placed tile counts as 1 point
+
+        # Vertical adjacency
         up = row_idx - 1
-        down = row_idx + 1
-        
-        # Check above for vertically adjacent tiles
         while len(wall) > up >= 0 and wall[up][col_idx] is not None:
             vertical_score += 1
             up -= 1
-            
-        # Check below for vertically adjacent tiles
-        while 0<= down < len(wall) and wall[down][col_idx] is not None:
+
+        down = row_idx + 1
+        while 0 <= down < len(wall) and wall[down][col_idx] is not None:
             vertical_score += 1
             down += 1
-        
-        # Total score is the sum of the horizontal and vertical scores
-        score = horizontal_score + vertical_score - 1  # Subtract 1 to avoid double-counting the placed tile
-        
+
+        # Total score includes the placed tile itself only once if it's part of a group
+        score = max(1, horizontal_score + 1) + max(1, vertical_score + 1) - 1
+
         return score
 
-
     def calculate_floor_penalty(self, floor_line):
-        """
-        Calculate penalties for leftover tiles on the floor line.
-        """
-        penalties = [-1, -1, -2, -2, -2, -3, -3]  # Example penalty values
+        penalties = self.settings.get("floor_line_penalties", [-1, -1, -2, -2, -2, -3, -3])
         penalty = 0
         for i, tile in enumerate(floor_line):
-            penalty += penalties[i] if i < len(penalties) else -3
+            penalty += penalties[i] if i < len(penalties) else penalties[-1]
         return penalty
-    
+
     def is_game_over(self):
         """
         Check if the game ends. The game ends when a player completes a row on their wall.

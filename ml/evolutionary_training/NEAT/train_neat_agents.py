@@ -38,7 +38,7 @@ def train_neat_agents():
 
     print(f"Config - Inputs: {config.genome_config.num_inputs}, Outputs: {config.genome_config.num_outputs}")
 
-    num_generations = 1000  # Adjust as needed
+    num_generations = 5000  # Adjust as needed
 
     # Initialize NEATAlgorithm
     neat_algorithm = NeatAlgorithm(config=config, num_generations=num_generations)
@@ -52,8 +52,8 @@ def train_neat_agents():
 
     # Create a NEATAgent with the winner genome
     net = neat.nn.FeedForwardNetwork.create(winner, config)
-    best_agent = NeatAgent(net)
+    best_agent = NeatAgent(net, manager, encoder)
 
     # Save the best agent's model if needed
     # Implement a save_model method in NEATAgent if desired
-    # best_agent.save_model('best_neat_agent.pkl')
+    best_agent.save_model('best_neat_agent.pkl')

@@ -1,10 +1,12 @@
 import mlflow
 import neat
+import statistics
 
 class MLflowReporter(neat.reporting.BaseReporter):
 
     def __init__(self):
         self.generation = 0
+        self.max_turns = 1  # Initialise max_turns with a default value
 
     def start_generation(self, generation):
         self.generation = generation
@@ -13,13 +15,20 @@ class MLflowReporter(neat.reporting.BaseReporter):
         # Calculate average fitness
         fitnesses = [genome.fitness for genome in population.values()]
         avg_fitness = sum(fitnesses) / len(fitnesses)
+        fitness_variance = statistics.variance(fitnesses) if len(fitnesses) > 1 else 0
 
-        # Log average fitness to MLflow
+        # Log average fitness and fitness variance
         mlflow.log_metric('average_fitness', avg_fitness, step=self.generation)
+        mlflow.log_metric('fitness_variance', fitness_variance, step=self.generation)
 
         # Number of species
         num_species = len(species_set.species)
         mlflow.log_metric('num_species', num_species, step=self.generation)
+
+        # Average species size
+        species_sizes = [len(species.members) for species in species_set.species.values()]
+        avg_species_size = sum(species_sizes) / len(species_sizes)
+        mlflow.log_metric('avg_species_size', avg_species_size, step=self.generation)
 
         # Average genome size (number of nodes and connections)
         total_nodes = []
@@ -39,10 +48,18 @@ class MLflowReporter(neat.reporting.BaseReporter):
         # Optionally, log best fitness
         mlflow.log_metric('best_fitness', best_genome.fitness, step=self.generation)
 
+        # Log max_turns
+        mlflow.log_metric('max_turns', self.max_turns, step=self.generation)
+
     def end_generation(self, config, population, species_set):
         pass  # You can implement this if needed
 
     def complete_extinction(self):
         mlflow.log_metric('extinction_event', 1, step=self.generation)
 
-    # Implement other methods if you wish to log more events
+    # Additional logging for interesting metrics
+    def species_extinction(self, species_id):
+        mlflow.log_metric(f'species_{species_id}_extinction', 1, step=self.generation)
+
+    def species_creation(self, species_id):
+        mlflow.log_metric(f'species_{species_id}_creation', 1, step=self.generation)

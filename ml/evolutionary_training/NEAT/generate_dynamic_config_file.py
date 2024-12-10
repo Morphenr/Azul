@@ -31,7 +31,7 @@ bias_init_stdev         = 1.0
 bias_max_value          = 10.0
 bias_min_value          = -10.0
 bias_mutate_power       = 0.5
-bias_mutate_rate        = 0.7
+bias_mutate_rate        = 0.5
 bias_replace_rate       = 0.1
 
 # Node response options
@@ -39,9 +39,9 @@ response_init_mean      = 1.0
 response_init_stdev     = 0.0
 response_max_value      = 10.0
 response_min_value      = -10.0
-response_mutate_power   = 0.0
-response_mutate_rate    = 0.0
-response_replace_rate   = 0.0
+response_mutate_power   = 1
+response_mutate_rate    = 0.1
+response_replace_rate   = 0.1
 
 # genome compatibility options
 compatibility_disjoint_coefficient = 2.0
@@ -53,37 +53,37 @@ weight_init_stdev       = 1.0
 weight_max_value        = 30
 weight_min_value        = -30
 weight_mutate_power     = 1
-weight_mutate_rate      = 0.9
+weight_mutate_rate      = 0.1
 weight_replace_rate     = 0.1
 
 # node gene options
-node_add_prob = 0.15
-node_delete_prob = 0.1
-conn_add_prob = 0.15
-conn_delete_prob = 0.1
+node_add_prob = 0.05
+node_delete_prob = 0.04
+conn_add_prob = 0.5
+conn_delete_prob = 0.4
 
 # network parameters
 num_hidden              = 0
 num_inputs              = {input_dim}
 num_outputs             = {output_dim}
 feed_forward            = True
-initial_connection      = unconnected
+initial_connection      = partial_nodirect 0.1 
 
 # genome configuration options
 enabled_default         = True
 enabled_mutate_rate     = 0.01
 
 [DefaultSpeciesSet]
-compatibility_threshold = 3
+compatibility_threshold = 3.5
 
 [DefaultStagnation]
-species_fitness_func    = mean
-max_stagnation          = 10
-species_elitism         = 2
+species_fitness_func    = max
+max_stagnation          = 20
+species_elitism         = 1
 
 [DefaultReproduction]
-elitism                 = 1
-survival_threshold      = 0.2
+elitism                 = 2
+survival_threshold      = 0.3
     """
 
     # Write the generated content to the specified file
