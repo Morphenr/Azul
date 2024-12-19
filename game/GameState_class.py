@@ -149,7 +149,7 @@ class GameState:
         round_over_bool = (all(len(factory) == 0 for factory in self.factories) and len(self.center_pool) == 0)
         return round_over_bool
 
-    def wall_tiling_phase(self):
+    def wall_tiling_phase(self, is_score_evaluation=False):
         """
         Perform the Wall-tiling phase, including scoring, moving tiles,
         and discarding leftover tiles. Determine the next starting player
@@ -203,10 +203,12 @@ class GameState:
                 self.apply_end_game_bonuses(player_board)
 
         # Reset for the next round
-        self.round_number += 1
-        self.current_player = next_starting_player if next_starting_player is not None else 0
-        self.first_player_tile = True  # Reset the first player tile for the next round
-        self.refill_factories()
+        ####
+        if not is_score_evaluation:
+            self.round_number += 1
+            self.current_player = next_starting_player if next_starting_player is not None else 0
+            self.first_player_tile = True  # Reset the first player tile for the next round
+            self.refill_factories()
 
     def apply_end_game_bonuses(self, player_board):
         """

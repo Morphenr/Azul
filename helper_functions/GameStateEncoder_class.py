@@ -58,7 +58,7 @@ class GameStateEncoder:
         """
         Check if the first player tile is in the center pool.
         """
-        return "first_player_tile" in self.game_state.center_pool
+        return self.game_state.first_player_tile
 
     def _encode_player_board(self, player_idx):
         """
@@ -77,7 +77,7 @@ class GameStateEncoder:
 
         # Wall (flattened to tile color indices, None replaced with -1)
         wall_flattened = [
-            self.game_state.tile_color_mapping.get(tile, -1) for row in board["wall"] for tile in row
+            self.game_state.tile_color_mapping.get(tile, -1)+1 for row in board["wall"] for tile in row # trying to avoid -14 as a value in the vector
         ]
         features.extend(wall_flattened)
 

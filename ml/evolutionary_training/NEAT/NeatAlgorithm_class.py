@@ -80,7 +80,7 @@ class NeatAlgorithm:
         print(f"Average fitness: {avg_fitness}")
 
         # Update consecutive positive fitness counter
-        if avg_fitness > 0:
+        if avg_fitness > 0.5:
             self.consecutive_positive_fitness_generations += 1
             print(f"Consecutive positive fitness generations: {self.consecutive_positive_fitness_generations}")
         else:
