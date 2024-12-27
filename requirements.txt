@@ -1,6 +1,7 @@
-torch==1.13.1
+torch
 numpy==1.23.5
 pyyaml
 plotly
 mlflow==2.14
 pygame
+neat-python
