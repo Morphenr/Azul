@@ -1,27 +1,23 @@
-from game.GameState_class import GameState
-from MinMax.MinMaxAgent_class import MinMaxAgent
-
 class MinMaxAzulEnv:
-    def __init__(self, num_players, agent_depth):
-        self.num_players = num_players
-        self.agents = [MinMaxAgent(agent_depth) for _ in range(num_players)]
-        self.game_state = GameState()
+    def __init__(self, game_state, agents):
+        self.game_state = game_state
+        if len(agents) < 2 or len(agents) > 4:
+            raise ValueError("The number of agents must be between 2 and 4.")
+        self.agents = agents
 
     def play_game(self):
-        self.game_state.reset()
+        """
+        Simulate the game until it ends.
+        """
         while not self.game_state.is_game_over():
-            print(f"--- Round {self.game_state.round_number} ---")
-            player_idx = self.game_state.current_player
-            print(f"Player {player_idx + 1}'s turn:")
-            optimal_move = self.agents[player_idx].find_optimal_move(self.game_state, player_idx)
-            if optimal_move:
-                factory_idx, tile, pattern_line_idx = optimal_move
-                print(f"  Chose move: Factory {factory_idx}, Tile {tile}, Pattern Line {pattern_line_idx}")
-                self.game_state.take_action(player_idx, factory_idx, tile, pattern_line_idx)
-            else:
-                print("No valid moves available.")
-            print(self.game_state)
+            current_player_idx = self.game_state.current_player
+            agent = self.agents[current_player_idx]
+            action = agent.choose_action(self.game_state)
+            if action:
+                factory_idx, tile, pattern_line_idx = action
+                self.game_state.take_action(current_player_idx, factory_idx, tile, pattern_line_idx)
 
-        print("--- Final Scores ---")
-        for player_idx, board in enumerate(self.game_state.player_boards):
-            print(f"Player {player_idx + 1}: {board['score']} points")
+        # Perform final scoring and declare winner
+        scores = [board["score"] for board in self.game_state.player_boards]
+        winner = scores.index(max(scores))
+        return scores, winner
