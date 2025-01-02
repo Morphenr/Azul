@@ -1,5 +1,6 @@
 from ml.evolutionary_training.NEAT.train_neat_agents import train_neat_agents
 from ml.evolutionary_training.evolutionary_algorithm.train_evolutionary_agents import train_evolutionary_agents
+from game.GameVisualiser_class import GameVisualiser
 
 from MinMax.MinMaxAgent_class import AzulAgent
 from MinMax.MinMaxAzulEnv_class import MinMaxAzulEnv
@@ -14,8 +15,10 @@ if __name__ == '__main__':
    # Create agents
    agents = [AzulAgent(player_idx=i) for i in range(game_state.num_players)]
 
-   # Create environment
-   env = MinMaxAzulEnv(game_state, agents)
+   visualiser = GameVisualiser(num_players=game_state.num_players)
+
+   # Set up the game environment
+   env = MinMaxAzulEnv(game_state, agents, visualiser)
 
    # Simulate game
    final_scores, winner = env.play_game()
